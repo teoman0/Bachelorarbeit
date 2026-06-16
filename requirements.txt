@@ -1,0 +1,29 @@
+# Initial research environment.
+# Exact versions should be frozen in a lock file after the dataset and first
+# executable experiments are defined.
+
+numpy
+pandas
+scikit-learn
+Pillow
+opencv-python
+matplotlib
+seaborn
+PyYAML
+tqdm
+
+# Deep learning stack. Install a CUDA-specific torch build if required.
+torch
+torchvision
+
+# Planned model families.
+ultralytics
+timm>=1.0.20
+transformers>=4.56.0
+accelerate
+
+# Development and notebooks.
+jupyter
+ipykernel
+pytest
+ruff

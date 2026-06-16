@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environments
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local data and derived datasets
+data/raw/
+data/interim/
+data/processed/
+data/patches/
+data/cache/
+data/external/
+
+# Model weights and checkpoints
+checkpoints/
+weights/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+
+# Experiment outputs
+outputs/*
+!outputs/.gitkeep
+runs/
+wandb/
+mlruns/
+lightning_logs/
+tensorboard/
+
+# Large or generated archives
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Keep curated reports versionable by default.
