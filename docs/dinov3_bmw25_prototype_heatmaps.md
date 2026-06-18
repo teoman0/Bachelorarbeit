@@ -64,12 +64,18 @@ genutzt, soweit vorhanden.
 
 ## Ausfuehrung
 
+Alle Befehle werden aus dem Repository-Root ausgefuehrt:
+
+```powershell
+cd C:\path\to\Bachelorarbeit
+```
+
 Eine passende Minimalumgebung kann mit der pinbaren Requirements-Datei
 installiert werden:
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements-dinov3-prototype.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dinov3-prototype.txt
 ```
 
 Der Datensatzpfad wird nicht versioniert, sondern lokal als Umgebungsvariable
@@ -80,7 +86,7 @@ $env:BMW25_DATA_ROOT = "C:\path\to\BMW_25\Viertel BMW gefiltert"
 ```
 
 ```powershell
-.venv\Scripts\python.exe scripts\dinov3_prototype_heatmaps.py --config configs\dinov3_bmw25_prototype_heatmaps.yaml
+.\.venv\Scripts\python.exe scripts\dinov3_prototype_heatmaps.py --config configs\dinov3_bmw25_prototype_heatmaps.yaml
 ```
 
 Alle Ergebnisse werden lokal unter

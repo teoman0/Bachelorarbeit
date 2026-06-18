@@ -38,28 +38,34 @@ Repository eingecheckt werden.
 
 ## Ausfuehrung
 
+Alle Befehle werden aus dem Repository-Root ausgefuehrt:
+
+```powershell
+cd C:\path\to\Bachelorarbeit
+```
+
 Eine passende Minimalumgebung kann mit der pinbaren Requirements-Datei
 installiert werden:
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements-dinov3-prototype.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dinov3-prototype.txt
 ```
 
 ```powershell
-python scripts/dinov3_patch_smoke_test.py --config configs/dinov3_patch_smoke_test.yaml
+.\.venv\Scripts\python.exe scripts\dinov3_patch_smoke_test.py --config configs/dinov3_patch_smoke_test.yaml
 ```
 
 Optional mit einem echten Einzelbild:
 
 ```powershell
-python scripts/dinov3_patch_smoke_test.py --config configs/dinov3_patch_smoke_test.yaml --image C:\path\to\image.jpg
+.\.venv\Scripts\python.exe scripts\dinov3_patch_smoke_test.py --config configs/dinov3_patch_smoke_test.yaml --image C:\path\to\image.jpg
 ```
 
 Ein trockener Pipeline-Test ohne DINOv3-Download:
 
 ```powershell
-python scripts/dinov3_patch_smoke_test.py --config configs/dinov3_patch_smoke_test.yaml --dry-run
+.\.venv\Scripts\python.exe scripts\dinov3_patch_smoke_test.py --config configs/dinov3_patch_smoke_test.yaml --dry-run
 ```
 
 ## Erwartete Outputs
