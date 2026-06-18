@@ -19,7 +19,7 @@ Untersucht werden Modelle, die aus Bildern metallischer Oberflaechen den Schleif
    DINOv3 wird zuerst als eingefrorener Feature Extractor genutzt. Darauf wird ein einfacher Klassifikationskopf trainiert, um zu pruefen, ob die self-supervised vortrainierten Repraesentationen fuer den Schleifgrad geeignet sind.
 
 3. **Lizenzsicherer Open-Source Vision Transformer**  
-   Vergleich mit einem unkritisch nutzbaren Vision Transformer, bevorzugt DeiT oder ViT ueber `timm`. Die konkrete Modell- und Gewichtsquelle muss vor der Nutzung in [docs/model_licenses.md](docs/model_licenses.md) dokumentiert werden.
+   Vergleich mit einem unkritisch nutzbaren Vision Transformer. Die konkrete Modell- und Gewichtsquelle muss vor der Nutzung in [docs/model_licenses.md](docs/model_licenses.md) dokumentiert werden.
 
 4. **DINOv3 patchbasiert**  
    Lokale Schleifgradvorhersage als methodisch saubere Annaeherung an Segmentierung. Da keine pixelgenauen Segmentierungsannotationen vorliegen, wird keine echte semantische Segmentierung trainiert. Stattdessen werden Bilder in Patches zerlegt, patchweise klassifiziert und anschliessend als raeumliche Schleifgradkarte bzw. Heatmap visualisiert.
