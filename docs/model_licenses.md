@@ -45,6 +45,40 @@ Notizen:
   - lokale Speicherposition ausserhalb des Git-Repositories.
 - DINOv3 ist deshalb nicht die Modellgruppe fuer den "lizenzsicheren Open-Source Vision Transformer", sondern eine eigene zu untersuchende Modellgruppe.
 
+Konkrete Nutzung:
+
+```text
+Experiment-ID: dinov3_patch_smoke_test
+Modellgruppe: DINOv3 patchbasiert
+Modellname: facebook/dinov3-vits16-pretrain-lvd1689m
+Paket/Repository: Hugging Face transformers
+Paketversion oder Commit: transformers 5.12.1, torch 2.12.1+cpu
+Gewichtsquelle: https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m
+Download-Datum: 2026-06-18
+Code-Lizenz: DINOv3 License laut Modellkarte/Repository
+Gewichte-Lizenz: DINOv3 License laut Modellkarte/Repository
+Pretraining-Datensatz: LVD-1689M laut Modellkarte
+Zitationshinweis: DINOv3, arXiv:2508.10104
+Lokaler Gewichtepfad ausserhalb des Repos: Hugging-Face-Cache ausserhalb des Repositories, z. B. `%USERPROFILE%\.cache\huggingface\hub\models--facebook--dinov3-vits16-pretrain-lvd1689m`
+Bemerkungen: Nur technischer Smoke-Test ohne Training, Labels oder Bewertung.
+```
+
+```text
+Experiment-ID: dinov3_bmw25_prototype_heatmaps
+Modellgruppe: DINOv3 patchbasiert
+Modellname: facebook/dinov3-vits16-pretrain-lvd1689m
+Paket/Repository: Hugging Face transformers
+Paketversion oder Commit: siehe requirements-dinov3-prototype.txt
+Gewichtsquelle: https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m
+Download-Datum: 2026-06-18
+Code-Lizenz: DINOv3 License laut Modellkarte/Repository
+Gewichte-Lizenz: DINOv3 License laut Modellkarte/Repository
+Pretraining-Datensatz: LVD-1689M laut Modellkarte
+Zitationshinweis: DINOv3, arXiv:2508.10104
+Lokaler Gewichtepfad ausserhalb des Repos: Hugging-Face-Cache ausserhalb des Repositories
+Bemerkungen: Qualitative Prototyp-Heatmaps ohne Training, ohne Pixelmasken und ohne finale Testset-Bewertung.
+```
+
 ## DeiT
 
 Quelle:
