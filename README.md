@@ -60,4 +60,7 @@ outputs/              # Lokale Experimentoutputs, nicht fuer GitHub
 3. Split-Strategie festlegen und dokumentieren.
 4. Erst danach Dataset- und Trainingscode implementieren.
 
+Fuer die fruehe strukturelle Datensatzpruefung in Kapitel 3.1 steht
+[docs/dataset_audit.md](docs/dataset_audit.md) zur Verfuegung.
+
 Weitere Details stehen in [docs/project_context.md](docs/project_context.md), [docs/experiment_plan.md](docs/experiment_plan.md) und [data/README.md](data/README.md).
