@@ -57,3 +57,11 @@ tensorboard/
 *.7z
 
 # Keep curated reports versionable by default.
+
+# Local dataset audit artifacts with possible raw-data references.
+reports/figures/sample_grid_per_class.png
+reports/figures/*sample*
+reports/figures/*grid*
+reports/tables/image_inventory.csv
+reports/tables/potential_duplicates.csv
+reports/tables/dataset_audit_metadata.json

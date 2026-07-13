@@ -69,6 +69,17 @@ Das Skript erzeugt:
 - `reports/figures/sample_grid_per_class.png`: kleines Thumbnail-Raster mit
   Beispielbildern pro Klasse.
 
+## Datenschutz und Versionierung
+
+`sample_grid_per_class.png` enthaelt reale Beispielbilder aus dem lokalen
+Datensatz. Diese Abbildung ist fuer die lokale Sichtpruefung gedacht und soll
+nur nach ausdruecklicher Freigabe versioniert oder oeffentlich geteilt werden.
+
+`image_inventory.csv`, `potential_duplicates.csv` und
+`dataset_audit_metadata.json` koennen Dateinamen, lokale Pfade, Hashes oder
+Rueckschluesse auf den Datensatz enthalten. Diese Dateien bleiben
+standardmaessig lokal und werden nicht ins oeffentliche Repository committed.
+
 ## Methodische Einordnung
 
 `num_images` in `dataset_summary.csv` zaehlt alle gefundenen Bilddateien mit
