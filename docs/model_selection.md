@@ -1,4 +1,4 @@
-# Model Selection
+# Modellauswahl
 
 Stand: 2026-07-14
 
@@ -9,7 +9,7 @@ Experimente muessen weiterhin ueber Config-Dateien in `configs/` gesteuert und
 mit Split-Manifest, Seed, Git-Commit, Paketversionen und Lizenznotizen
 reproduzierbar dokumentiert werden.
 
-## Selection criteria
+## Auswahlkriterien
 
 Die Modellauswahl orientiert sich an folgenden Kriterien:
 
@@ -29,7 +29,7 @@ Die Modellauswahl orientiert sich an folgenden Kriterien:
 - Hardwareaufwand: Bevorzugt werden kleine Varianten, die auf der verfuegbaren
   lokalen Hardware realistisch trainierbar oder auswertbar sind.
 
-## Planned model matrix
+## Geplante Modell Matrix
 
 | Role | Model | Training setup | Purpose | License note | Main evaluation level |
 | --- | --- | --- | --- | --- | --- |
@@ -38,7 +38,7 @@ Die Modellauswahl orientiert sich an folgenden Kriterien:
 | Architekturkontrolle / lizenzbewusster ViT | DeiT-Tiny from scratch | Bevorzugt `deit_tiny_patch16_224` mit `pretrained=False`; Training ohne externe Gewichte | Abschaetzen, was ein kleiner ViT ohne grosses Vortraining auf dem Datensatz leisten kann | DeiT bzw. `timm` als Apache-2.0-Codebasis dokumentieren; durch `pretrained=False` werden externe Gewichts-Lizenzfragen vermieden | Globales Bild |
 | Zusatzanalyse | DINOv3 patchbasiert | Split zuerst auf Gruppenebene; danach Patches; DINOv3 pro Patch; Rueckprojektion als Heatmap | Qualitative lokale Schleifgradkarten und raeumliche Plausibilisierung | DINOv3 License dokumentieren; Patch-Outputs nicht als Segmentierungs-Ground-Truth darstellen | Patch / Heatmap, nicht Hauptmodellvergleich |
 
-## Main comparison
+## Hauptvergleich
 
 Der Hauptvergleich der Arbeit erfolgt auf globaler Bildebene. Dabei erhalten
 YOLOv11-cls, DINOv3 frozen + Klassifikationskopf und DeiT-Tiny from scratch
@@ -64,7 +64,7 @@ Vortrainierung auf dem verfuegbaren Datensatz erreichen kann. Es wird deshalb
 nicht als direkter Leistungsfavorit gegenueber DINOv3 formuliert, sondern als
 ViT-from-scratch-Untergrenze bzw. Kontrollmodell.
 
-## Additional patch-based analysis
+## Zusatzanalyse
 
 DINOv3 patchbasiert ist eine Zusatzanalyse zur raeumlichen Visualisierung und
 kein Teil des primaeren globalen Modellvergleichs. Dabei werden Bilder erst nach
@@ -79,7 +79,7 @@ heterogene Oberflaechenbereiche enthaelt. Die resultierenden Heatmaps werden
 daher als qualitative lokale Klassifikationskarten interpretiert, nicht als
 Ground-Truth-Segmentierungen.
 
-## Open decisions
+## Offene Entscheidungen
 
 Vor dem Training muessen folgende Punkte final festgelegt und dokumentiert
 werden:
