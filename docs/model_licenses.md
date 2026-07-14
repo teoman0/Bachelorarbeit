@@ -9,7 +9,7 @@ Diese Datei dokumentiert die Lizenzlage der geplanten Modellgruppen. Sie ersetzt
 | Modellgruppe | Voraussichtliche Quelle | Lizenzstatus | Konsequenz fuer dieses Repo |
 | --- | --- | --- | --- |
 | YOLOv11-cls | Ultralytics `ultralytics` | AGPL-3.0 oder kommerzielle Ultralytics Enterprise License | Fuer wissenschaftliche Experimente moeglich, Lizenzhinweise dokumentieren; keine Gewichte ins Repo |
-| DINOv3 | Meta / facebookresearch DINOv3 | DINOv3 License, eigene Meta-Lizenz | Nicht als lizenzsicherer Open-Source-Vergleich behandeln; konkrete Nutzungsbedingungen dokumentieren |
+| DINOv3 | Meta / facebookresearch DINOv3 | DINOv3 License, eigene Meta-Lizenz | Nicht als unkritischen Open-Source-Vergleich behandeln; konkrete Nutzungsbedingungen dokumentieren |
 | DeiT-Tiny from scratch | facebookresearch/deit bzw. `timm` | Code Apache-2.0; `pretrained=False` vermeidet externe Gewichte | Geplanter lizenzbewusster ViT-Kontrollvergleich |
 | ViT ueber `timm` | huggingface/pytorch-image-models | Code Apache-2.0; Gewichte koennen abweichen | Fuer jedes konkrete `timm`-Modell die Gewichtsquelle separat dokumentieren; fuer den geplanten DeiT-Tiny-Lauf keine externen Gewichte nutzen |
 
@@ -31,7 +31,7 @@ Konkrete Nutzung:
 
 ```text
 Experiment-ID: yolo_rectangle_detection_pilot_v1
-Modellgruppe: YOLO Detection / rechteckbasierte lokale Segmentierung
+Modellgruppe: YOLO Detection / rechteckbasierte lokale Pilotanalyse
 Modellname: yolo11n.pt
 Paket/Repository: ultralytics
 Paketversion oder Commit: ultralytics 8.4.90 im ersten lokalen Lauf vom 2026-07-08
@@ -42,7 +42,8 @@ Gewichte-Lizenz: Ultralytics/YOLO-Modellbedingungen laut Quelle pruefen; nicht i
 Pretraining-Datensatz: COCO Detection fuer das vortrainierte Detection-Modell
 Zitationshinweis: Ultralytics YOLO Dokumentation/Repository
 Lokaler Gewichtepfad ausserhalb des Repos: Ultralytics-/Torch-Cache oder lokaler Gewichteordner ausserhalb von Git
-Bemerkungen: Pilotlauf auf CVAT-Rechtecken aus manual_all_yolo, keine pixelgenaue Segmentierung.
+Bemerkungen: Pilotlauf auf CVAT-Rechtecken aus manual_all_yolo; nicht Teil des
+globalen YOLOv11-cls-Hauptvergleichs und keine pixelgenaue Segmentierung.
 ```
 
 ## DINOv3
@@ -62,7 +63,8 @@ Notizen:
   - Zeitpunkt des Downloads,
   - akzeptierte Lizenzbedingungen,
   - lokale Speicherposition ausserhalb des Git-Repositories.
-- DINOv3 ist deshalb nicht die Modellgruppe fuer den "lizenzsicheren Open-Source Vision Transformer", sondern eine eigene zu untersuchende Modellgruppe.
+- DINOv3 ist deshalb nicht die Modellgruppe fuer den lizenzbewussten
+  ViT-Kontrollvergleich, sondern eine eigene zu untersuchende Modellgruppe.
 
 Konkrete Nutzung:
 
@@ -100,7 +102,7 @@ Bemerkungen: Qualitative Prototyp-Heatmaps ohne Training, ohne Pixelmasken und o
 
 ```text
 Experiment-ID: weak_segmentation_feasibility_manual_v1
-Modellgruppe: DINOv3 patchbasiert / weak segmentation feasibility
+Modellgruppe: DINOv3 patchbasiert / qualitative lokale Klassifikationskarten
 Modellname: facebook/dinov3-vits16-pretrain-lvd1689m
 Paket/Repository: Hugging Face transformers
 Paketversion oder Commit: siehe summary.json des lokalen Laufs

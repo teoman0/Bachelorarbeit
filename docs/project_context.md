@@ -26,13 +26,17 @@ Bei der globalen Klassifikation erhaelt ein Modell ein Bild und sagt einen Schle
 
 Eine echte semantische Segmentierung wuerde pixelgenaue Zielmasken benoetigen. Wenn nur Bildlabels fuer den Schleifgrad vorhanden sind, waere ein Segmentierungstraining methodisch nicht sauber, weil dem Modell keine verlaesslichen Pixel- oder Regionenlabels bereitgestellt werden. Ein solches Vorgehen wuerde den Eindruck einer raeumlich exakten Ground Truth erzeugen, die im Datensatz nicht existiert.
 
-## Patchbasierte lokale Klassifikation als Annaeherung
+## Patchbasierte lokale Klassifikationskarten
 
 Die patchbasierte Variante zerlegt ein Bild in kleinere Bildausschnitte und klassifiziert diese Patches. Die Patchvorhersagen koennen anschliessend wieder auf die Bildpositionen projiziert und als Heatmap visualisiert werden.
 
-Diese Methode ist keine echte Segmentierung. Sie ist eine Annaeherung, weil jedes Patchlabel aus dem uebergeordneten Bildlabel abgeleitet wird. Dadurch entsteht Labelrauschen, besonders wenn ein Bild lokal heterogene Oberflaechenbereiche enthaelt. Die Methode kann trotzdem sinnvoll sein, um zu untersuchen, ob das Modell raeumlich konsistente Hinweise auf den Schleifgrad lernt.
+Diese Methode ist keine echte semantische Segmentierung. Jedes Patchlabel wird
+aus dem uebergeordneten Bildlabel abgeleitet. Dadurch entsteht Labelrauschen,
+besonders wenn ein Bild lokal heterogene Oberflaechenbereiche enthaelt. Die
+Methode kann trotzdem sinnvoll sein, um zu untersuchen, ob das Modell
+raeumlich konsistente Hinweise auf den Schleifgrad lernt.
 
-## Data-Leakage-Risiken
+## Leakage-Risiken
 
 Bei Oberflaechenbildern koennen Leakage-Risiken besonders leicht entstehen:
 

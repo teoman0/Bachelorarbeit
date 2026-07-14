@@ -1,4 +1,4 @@
-# Dataset-Audit fuer Kapitel 3.1
+# Datensatz-Audit fuer Kapitel 3.1
 
 Dieses Skript dient der fruehen strukturellen Pruefung der Datensatzeignung. Es
 trainiert kein Modell, erzeugt keine Patches und bewertet kein Testset fuer
@@ -50,7 +50,7 @@ Group angegeben werden. Das Ergebnis landet in `possible_group_id` und kann
 spaeter helfen, Leakage-Risiken und eine korrekte Split-Ebene zu diskutieren.
 Ohne Regex nutzt das Skript nur eine einfache Dateinamensheuristik.
 
-## Outputs
+## Ausgaben
 
 Das Skript erzeugt:
 

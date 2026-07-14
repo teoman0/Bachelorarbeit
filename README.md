@@ -4,7 +4,11 @@ Dieses Repository begleitet die experimentelle Durchfuehrung einer Bachelorarbei
 
 ## Aktueller Status
 
-Dieses Repository enthaelt zunaechst nur Grundstruktur, Dokumentation und eine initiale Abhaengigkeitsliste. Trainingscode wird erst ergaenzt, nachdem die konkrete Datensatzstruktur geprueft und die Split-Strategie festgelegt wurde.
+Dieses Repository enthaelt methodische Dokumentation, Datensatz-Audit-Ergebnisse,
+Modell- und Lizenznotizen, ein Trainings- und Vergleichsdesign,
+Config-Templates sowie kleine Smoke-Test-Skripte. Es enthaelt keine Rohdaten,
+keine finalen Trainingslaeufe, keine finalen Checkpoints und keine
+Modellgewichte.
 
 ## Ziel der Arbeit
 
@@ -13,16 +17,25 @@ Untersucht werden Modelle, die aus Bildern metallischer Oberflaechen den Schleif
 ## Geplante Modellgruppen
 
 1. **YOLOv11-cls**  
-   Praxisnahe moderne Baseline fuer globale Schleifgradklassifikation auf Bildebene.
+   Praxisnahe Baseline fuer globale Bildklassifikation. Die Aufgabe ist
+   Bild -> eine von vier Schleifgradklassen. YOLOv11-cls wird hier nicht als
+   Segmentierungsmodell genutzt.
 
-2. **DINOv3 + Klassifikationskopf**  
-   DINOv3 wird zuerst als eingefrorener Feature Extractor genutzt. Darauf wird ein einfacher Klassifikationskopf trainiert, um zu pruefen, ob die self-supervised vortrainierten Repraesentationen fuer den Schleifgrad geeignet sind.
+2. **DINOv3 frozen + Klassifikationskopf**
+   Hauptansatz der Arbeit. DINOv3 wird zuerst als eingefrorener Feature
+   Extractor genutzt. Darauf wird ein einfacher Klassifikationskopf trainiert,
+   um zu pruefen, ob self-supervised vortrainierte Repraesentationen fuer den
+   Schleifgrad geeignet sind.
 
-3. **Lizenzsicherer Open-Source Vision Transformer**  
-   Vergleich mit einem unkritisch nutzbaren Vision Transformer. Die konkrete Modell- und Gewichtsquelle muss vor der Nutzung in [docs/model_licenses.md](docs/model_licenses.md) dokumentiert werden.
+3. **DeiT-Tiny from scratch**
+   Lizenzbewusste ViT-Kontrollarchitektur. Das Modell wird als Vision
+   Transformer ohne externe vortrainierte Gewichte betrachtet und dient als
+   ViT-from-scratch-Untergrenze, nicht als erwarteter Leistungsfavorit.
 
 4. **DINOv3 patchbasiert**  
-   Lokale Schleifgradvorhersage als methodisch saubere Annaeherung an Segmentierung. Da keine pixelgenauen Segmentierungsannotationen vorliegen, wird keine echte semantische Segmentierung trainiert. Stattdessen werden Bilder in Patches zerlegt, patchweise klassifiziert und anschliessend als raeumliche Schleifgradkarte bzw. Heatmap visualisiert.
+   Qualitative Zusatzanalyse fuer lokale Klassifikationskarten bzw. Heatmaps.
+   Da keine pixelgenauen Segmentierungsannotationen vorliegen, wird keine echte
+   semantische Segmentierung trainiert.
 
 ## Zentrale Reproduzierbarkeitsregeln
 
@@ -37,10 +50,11 @@ Untersucht werden Modelle, die aus Bildern metallischer Oberflaechen den Schleif
 
 ```text
 configs/              # Versionierte Experimentkonfigurationen
+configs/templates/    # Platzhalter-Configs, keine finalen Trainingsconfigs
 data/                 # Datensatzdokumentation und ggf. Split-Manifeste, keine Rohdaten in Git
 docs/                 # Methodische Dokumentation und Lizenznotizen
 notebooks/            # Explorative Analysen, keine produktionskritische Logik
-scripts/              # Kommandozeilen-Einstiegspunkte, spaeter config-basiert
+scripts/              # Hilfs- und Smoke-Test-Skripte, keine finalen Trainingslaeufe
 src/
   data/               # Datenpruefung, Split- und Dataset-Logik
   models/             # Modellaufbau
@@ -55,12 +69,16 @@ outputs/              # Lokale Experimentoutputs, nicht fuer GitHub
 
 ## Naechste Schritte
 
-1. Datensatzstruktur erfassen: Klassen, Anzahl Bilder, Aufnahmebedingungen, Bauteil-IDs, Wiederholungsmessungen.
-2. Leakage-Risiken identifizieren: gleiche Bauteile, gleiche Aufnahmeserien, stark ueberlappende Bildausschnitte, Patches aus demselben Originalbild.
-3. Split-Strategie festlegen und dokumentieren.
-4. Erst danach Dataset- und Trainingscode implementieren.
+1. Gruppierte Split-Strategie anhand der `q1`- bis `q4`-Gruppierung validieren.
+2. Split-Manifest erzeugen, ohne Rohdaten oder sensible lokale Pfade zu committen.
+3. Finale Hyperparameter experimentbezogen in Config-Dateien dokumentieren.
+4. Erst danach kurze, reproduzierbare Trainingslaeufe starten.
 
 Fuer die fruehe strukturelle Datensatzpruefung in Kapitel 3.1 steht
 [docs/dataset_audit.md](docs/dataset_audit.md) zur Verfuegung.
 
-Weitere Details stehen in [docs/project_context.md](docs/project_context.md), [docs/experiment_plan.md](docs/experiment_plan.md) und [data/README.md](data/README.md).
+Weitere Details stehen in [docs/project_context.md](docs/project_context.md),
+[docs/model_selection.md](docs/model_selection.md),
+[docs/training_comparison_design.md](docs/training_comparison_design.md),
+[docs/experiment_plan.md](docs/experiment_plan.md) und
+[data/README.md](data/README.md).

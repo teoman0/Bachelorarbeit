@@ -46,7 +46,7 @@ Zu dokumentieren:
 - verwendete Split-Manifeste,
 - Lizenzhinweise.
 
-### Experimentgruppe B: DINOv3 + Klassifikationskopf
+### Experimentgruppe B: DINOv3 frozen + Klassifikationskopf
 
 DINOv3 wird zuerst eingefroren als Feature Extractor verwendet. Trainiert wird nur ein normaler Klassifikationskopf.
 
@@ -57,21 +57,25 @@ Zu klaeren:
 - ob und welche Preprocessing-Schritte durch die Modellquelle vorgegeben sind,
 - ob Features offline gecached werden duerfen und wo dieser Cache lokal abgelegt wird.
 
-### Experimentgruppe C: Lizenzsicherer Open-Source Vision Transformer
+### Experimentgruppe C: DeiT-Tiny from scratch
 
-Als lizenzsicherer Vergleich soll bevorzugt DeiT oder ein ViT ueber `timm` eingesetzt werden. Die konkrete Modell- und Gewichtsquelle wird vor dem Experiment in [model_licenses.md](model_licenses.md) dokumentiert.
+Als lizenzbewusste ViT-Kontrollarchitektur soll bevorzugt
+`deit_tiny_patch16_224` mit `pretrained=False` eingesetzt werden. Der Vergleich
+dient als Vision Transformer ohne externe vortrainierte Gewichte und als
+ViT-from-scratch-Untergrenze, nicht als erwarteter Leistungsfavorit.
 
 Zu dokumentieren:
 
 - Modellname in `timm` oder offizieller Modellquelle,
 - Code-Lizenz,
-- Gewichte-Lizenz,
-- Datensatz der Vortrainierung, soweit bekannt,
+- dass keine externen vortrainierten Gewichte genutzt werden,
 - Zitationshinweise.
 
 ## Phase 4: Patchbasierte lokale Klassifikation
 
-Die patchbasierte lokale Klassifikation erfolgt erst nach der globalen Baseline und nach festgelegtem Split.
+DINOv3 patchbasiert ist eine qualitative Zusatzanalyse fuer lokale
+Klassifikationskarten bzw. Heatmaps. Sie erfolgt erst nach der globalen
+Baseline und nach festgelegtem Split.
 
 Vorgehen:
 
@@ -80,7 +84,8 @@ Vorgehen:
 3. Patchlabels werden aus dem Bildlabel abgeleitet.
 4. Ein Patchklassifikator wird trainiert oder ein globales Modell wird patchweise angewendet.
 5. Patchvorhersagen werden an ihre Bildposition zurueckprojiziert.
-6. Visualisierungen werden als Heatmaps interpretiert, nicht als Ground-Truth-Segmentierung.
+6. Visualisierungen werden als qualitative lokale Klassifikationskarten bzw.
+   Heatmaps interpretiert, nicht als Ground-Truth-Segmentierung.
 
 Wichtige Einschraenkung: Patchlabels koennen verrauscht sein, weil sie nicht pixelgenau annotiert wurden. Ergebnisse muessen deshalb als lokale Klassifikationshinweise und nicht als echte semantische Segmentierung formuliert werden.
 
@@ -111,7 +116,7 @@ Jedes Experiment soll ueber eine Config-Datei in `configs/` reproduzierbar sein.
 - Output-Verzeichnis,
 - Lizenz- und Quellenhinweise fuer Modellgewichte.
 
-## Output-Regeln
+## Ausgaberegeln
 
 Lokale Outputs gehoeren nach `outputs/` und werden nicht eingecheckt. Kuratierte Tabellen und Abbildungen, die fuer die Thesis benoetigt werden und keine grossen Dateien sind, koennen nach `reports/tables/` bzw. `reports/figures/` uebernommen werden.
 

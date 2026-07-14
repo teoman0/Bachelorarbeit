@@ -68,7 +68,7 @@ Ein trockener Pipeline-Test ohne DINOv3-Download:
 .\.venv\Scripts\python.exe scripts\dinov3_patch_smoke_test.py --config configs/dinov3_patch_smoke_test.yaml --dry-run
 ```
 
-## Erwartete Outputs
+## Erwartete Ausgaben
 
 Alle Outputs liegen unter `outputs/dinov3_patch_smoke_test/` und bleiben durch
 `.gitignore` lokal:

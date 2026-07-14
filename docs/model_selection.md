@@ -25,16 +25,16 @@ Die Modellauswahl orientiert sich an folgenden Kriterien:
   Hyperparameter, Seed, Paketversionen und Outputs muessen nachvollziehbar
   dokumentiert werden.
 - Lizenz- und Nutzungsrisiken: Modelle mit eigener oder restriktiver Lizenz
-  werden nicht als lizenzsichere Open-Source-Vergleiche dargestellt.
+  werden nicht als unkritische Open-Source-Vergleiche dargestellt.
 - Hardwareaufwand: Bevorzugt werden kleine Varianten, die auf der verfuegbaren
   lokalen Hardware realistisch trainierbar oder auswertbar sind.
 
-## Geplante Modell Matrix
+## Geplante Modellmatrix
 
-| Role | Model | Training setup | Purpose | License note | Main evaluation level |
+| Rolle | Modell | Trainingssetup | Zweck | Lizenznotiz | Hauptauswertungsebene |
 | --- | --- | --- | --- | --- | --- |
-| Praxisnahe moderne Baseline | YOLOv11-cls | Supervised Klassifikation; exakte Variante spaeter, bevorzugt `yolo11n-cls` oder `yolo11s-cls` je nach Hardware | Starker anwendungsnaher Vergleichspunkt fuer Bildklassifikation | Ultralytics AGPL-3.0 / Enterprise-Kontext dokumentieren; nicht als lizenzsicherer Open-Source-Vergleich formulieren | Globales Bild |
-| Hauptansatz | DINOv3 frozen + Klassifikationskopf | DINOv3-Backbone zunaechst eingefroren; trainiert wird nur ein linearer oder kleiner Klassifikationskopf | Pruefen, ob self-supervised vortrainierte Repraesentationen den Schleifgrad robust abbilden | Eigene DINOv3 License dokumentieren; nicht als lizenzsicherer Open-Source-Vergleich behandeln | Globales Bild |
+| Praxisnahe moderne Baseline | YOLOv11-cls | Supervised Klassifikation; exakte Variante spaeter, bevorzugt `yolo11n-cls` oder `yolo11s-cls` je nach Hardware | Starker anwendungsnaher Vergleichspunkt fuer Bildklassifikation | Ultralytics AGPL-3.0 / Enterprise-Kontext dokumentieren; nicht als unkritischen Open-Source-Vergleich formulieren | Globales Bild |
+| Hauptansatz | DINOv3 frozen + Klassifikationskopf | DINOv3-Backbone zunaechst eingefroren; trainiert wird nur ein linearer oder kleiner Klassifikationskopf | Pruefen, ob self-supervised vortrainierte Repraesentationen den Schleifgrad robust abbilden | Eigene DINOv3 License dokumentieren; nicht als unkritischen Open-Source-Vergleich behandeln | Globales Bild |
 | Architekturkontrolle / lizenzbewusster ViT | DeiT-Tiny from scratch | Bevorzugt `deit_tiny_patch16_224` mit `pretrained=False`; Training ohne externe Gewichte | Abschaetzen, was ein kleiner ViT ohne grosses Vortraining auf dem Datensatz leisten kann | DeiT bzw. `timm` als Apache-2.0-Codebasis dokumentieren; durch `pretrained=False` werden externe Gewichts-Lizenzfragen vermieden | Globales Bild |
 | Zusatzanalyse | DINOv3 patchbasiert | Split zuerst auf Gruppenebene; danach Patches; DINOv3 pro Patch; Rueckprojektion als Heatmap | Qualitative lokale Schleifgradkarten und raeumliche Plausibilisierung | DINOv3 License dokumentieren; Patch-Outputs nicht als Segmentierungs-Ground-Truth darstellen | Patch / Heatmap, nicht Hauptmodellvergleich |
 
@@ -64,7 +64,7 @@ Vortrainierung auf dem verfuegbaren Datensatz erreichen kann. Es wird deshalb
 nicht als direkter Leistungsfavorit gegenueber DINOv3 formuliert, sondern als
 ViT-from-scratch-Untergrenze bzw. Kontrollmodell.
 
-## Zusatzanalyse
+## Patchbasierte Zusatzanalyse
 
 DINOv3 patchbasiert ist eine Zusatzanalyse zur raeumlichen Visualisierung und
 kein Teil des primaeren globalen Modellvergleichs. Dabei werden Bilder erst nach

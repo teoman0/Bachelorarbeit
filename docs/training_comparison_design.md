@@ -1,4 +1,4 @@
-# Training and Comparison Design
+# Trainings- und Vergleichsdesign
 
 Stand: 2026-07-14
 
@@ -7,7 +7,7 @@ beschreibt die geplante Split-, Preprocessing-, Augmentierungs-, Trainings- und
 Auswertungslogik, ohne finale Trainingslaeufe zu starten oder konkrete
 Trainingsparameter als endgueltig festzuschreiben.
 
-## Scope
+## Geltungsbereich
 
 Der Hauptvergleich erfolgt auf globaler Bildebene fuer vier Schleifgradklassen.
 Verglichen werden YOLOv11-cls, DINOv3 frozen + Klassifikationskopf und
@@ -19,7 +19,7 @@ Keine Rohdaten, Checkpoints, Modellgewichte, Feature-Caches oder grosse Outputs
 werden versioniert. Alle finalen Experimente muessen vorab ueber Config-Dateien
 in `configs/` festgelegt werden.
 
-## 1. Split strategy
+## 1. Split-Strategie
 
 Der Datensatz umfasst laut Audit 4607 lesbare Bilder in vier Klassen. Die
 Ordner- und Dateinamen deuten auf geviertelte Oberflaechenbilder mit
@@ -76,7 +76,7 @@ Ein versionierbares Manifest soll nur Metadaten enthalten, zum Beispiel:
 image_id,relative_path,label,split,group_id,width,height,channels,source_suffix
 ```
 
-## 2. Image size and preprocessing
+## 2. Bildgroesse und Preprocessing
 
 Rohdaten werden nicht veraendert. Groessenanpassung, Kanalvereinheitlichung und
 Normalisierung erfolgen im Dataset, Loader oder in nicht versionierten
@@ -114,7 +114,7 @@ Normalisierung soll modellabhaengig erfolgen:
   definierte Normalisierung; Statistiken duerfen nur aus dem Trainingssplit
   geschaetzt werden.
 
-## 3. Augmentations
+## 3. Augmentierungen
 
 Augmentierungen sollen vorsichtig eingesetzt werden, weil metallische
 Schleifstrukturen richtungsabhaengige und feine Texturmerkmale enthalten
@@ -144,7 +144,7 @@ Standardmechanismen besitzt, muessen aber in der Config dokumentiert werden.
 Validation und Test erhalten keine zufaelligen Augmentierungen, sondern nur das
 deterministische Preprocessing.
 
-## 4. Training design by model group
+## 4. Trainingsdesign nach Modellgruppe
 
 ### YOLOv11-cls
 
@@ -158,7 +158,7 @@ Laufzeitbudget und Stabilitaet. Pro Experiment muessen Ultralytics-Version,
 Modellvariante, Input Size, Seed, Augmentierungen, Pretraining und
 Lizenzhinweise dokumentiert werden.
 
-### DINOv3 frozen + classification head
+### DINOv3 frozen + Klassifikationskopf
 
 DINOv3 frozen + Klassifikationskopf ist der Hauptansatz. Der DINOv3-Backbone
 wird zunaechst eingefroren. Trainiert wird nur ein linearer oder kleiner
@@ -181,7 +181,7 @@ Im Gegensatz zum DINOv3-Ansatz wird das komplette Modell trainiert. Die Rolle
 dieses Modells ist eine Architekturkontrolle bzw. ViT-from-scratch-Untergrenze,
 nicht ein erwarteter Leistungsfavorit gegenueber DINOv3.
 
-### DINOv3 patch-based analysis
+### DINOv3 patchbasiert
 
 DINOv3 patchbasiert ist nur eine Zusatzanalyse. Patches werden erst nach dem
 gruppierten Split erzeugt. Patchlabels werden aus dem globalen Bildlabel
@@ -192,7 +192,7 @@ Die Heatmaps werden qualitativ als lokale Klassifikationskarten interpretiert,
 nicht als Ground-Truth-Segmentierung. Ohne pixelgenaue Masken wird kein echtes
 semantisches Segmentierungsmodell trainiert.
 
-## 5. Metrics
+## 5. Metriken
 
 Fuer die globale Klassifikation werden folgende Metriken empfohlen:
 
@@ -215,7 +215,7 @@ mittlerer absoluter Klassenabstand, quadratisch gewichtetes Kappa oder eine
 Konfusionsmatrix mit ordinaler Interpretation. Diese Auswertung bleibt optional,
 bis die Klassenreihenfolge fachlich eindeutig dokumentiert ist.
 
-## 6. Reproducibility
+## 6. Reproduzierbarkeit
 
 Alle Experimente folgen einem Config-First-Prinzip. Jede Modellgruppe und jeder
 Lauf wird ueber eine versionierte Config in `configs/` beschrieben, bevor
@@ -244,7 +244,7 @@ Paketversionen und relevante Hardwareinformationen in einem lokalen Summary
 gespeichert werden. Checkpoints, Modellgewichte, Rohdaten, Feature-Caches und
 grosse Outputs werden nicht committed.
 
-## 7. Config template proposal
+## 7. Vorschlag fuer Config-Templates
 
 Die Dateien unter `configs/templates/` sind Platzhalter und keine finalen
 Trainingsconfigs:
@@ -258,7 +258,7 @@ Sie enthalten keine echten lokalen Datenpfade. Vor einem Training muessen sie
 in konkrete Experiment-Configs ueberfuehrt und mit realen, aber
 versionierbaren Metadaten gefuellt werden.
 
-## 8. Open decisions
+## 8. Offene Entscheidungen
 
 | Entscheidungspunkt | Empfehlung | Status | Begruendung |
 | --- | --- | --- | --- |

@@ -1,4 +1,4 @@
-# Dataset-Audit Results
+# Ergebnisse des Datensatz-Audits
 
 ## 1. Audit-Ueberblick
 
@@ -155,7 +155,7 @@ muessen. Patchbasierte Heatmaps sind mangels pixelgenauer Annotationen nur als
 qualitative lokale Klassifikationskarten und nicht als echte
 Ground-Truth-Segmentierungen zu interpretieren.
 
-## 9. Privacy note
+## 9. Datenschutznotiz
 
 Detaillierte Inventarlisten, lokale Bildpfade, Hashes, Duplicate-Pair-Dateien
 und Sample-Grids mit echten Bildausschnitten bleiben lokal und werden nicht in
