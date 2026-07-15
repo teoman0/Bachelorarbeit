@@ -10,10 +10,9 @@ Bilddaten versioniert.
 
 ## 1. Datensatzgrundlage
 
-Die Grundlage ist der lokale Datensatz `BMW_25 / Viertel BMW gefiltert`, der im
-Datensatz-Audit dokumentiert wurde. Laut Audit umfasst der Datensatz 4607
-lesbare Bilder in vier Klassen. Korrupte oder unlesbare Bilder wurden im Audit
-nicht gefunden.
+Die Grundlage ist der lokale Viertelbild-Datensatz, der im Datensatz-Audit
+dokumentiert wurde. Laut Audit umfasst der Datensatz 4607 lesbare Bilder in
+vier Klassen. Korrupte oder unlesbare Bilder wurden im Audit nicht gefunden.
 
 Rohdaten bleiben lokal und liegen nicht im Repository. Das Repository enthaelt
 nur Skripte, methodische Dokumentation und kleine, pruefbare Metadaten, sofern
@@ -36,6 +35,16 @@ data/raw/
 Das Audit weist vier Klassen aus. Die Klassenverteilung ist ungleich, daher
 muessen spaetere Auswertungen neben Accuracy auch Balanced Accuracy, Macro-F1
 und klassenweise Precision/Recall berichten.
+
+Die echte Klassenverteilung im erzeugten Split-Manifest lautet:
+
+| Klasse | Bilder |
+| --- | ---: |
+| Erste Bearbeitungssufe Viertel | 614 |
+| Finaler Zustand Viertel | 1455 |
+| Fräszustand Viertel | 1198 |
+| Zweite Bearbeitungsstufe Viertel | 1340 |
+| Gesamt | 4607 |
 
 ## 3. Technische Bildstruktur
 
@@ -87,6 +96,12 @@ ohne erkanntes q1-q4-/Viertel-Suffix verarbeitet wurden. Falls spaeter bessere
 Bauteil-, Proben- oder Aufnahme-IDs verfuegbar sind, haben diese methodisch
 Vorrang vor der Dateinamenheuristik.
 
+Im echten Splitlauf wurde fuer alle 4607 Bilder ein q1-q4-/Viertel-Suffix
+erkannt. Es gab damit 0 Bilder ohne erkannte q1-q4-Gruppierung. Aus den
+Dateinamen wurden 1547 Gruppen abgeleitet. 19 Gruppen enthalten Bilder aus mehr
+als einem Label; diese Gruppen wurden trotzdem als unteilbare Einheiten
+behandelt und jeweils nur einem Split zugeordnet.
+
 ## 5. Split-Erstellung
 
 Das Skript [scripts/create_grouped_split.py](../scripts/create_grouped_split.py)
@@ -95,11 +110,11 @@ Gruppen werden als unteilbare Einheiten behandelt. Das Skript versucht
 zusaetzlich, die Klassenverteilung pro Split moeglichst nah an der globalen
 Klassenverteilung zu halten.
 
-Vorgesehener lokaler Aufruf auf dem echten Datensatz:
+Ausgefuehrter lokaler Aufruf auf dem echten Datensatz:
 
 ```powershell
 python scripts/create_grouped_split.py `
-  --data-root data/raw `
+  --data-root <lokaler_dataset_root> `
   --output-manifest data/splits/bmw25_grouped_split_manifest.csv `
   --summary-json data/splits/bmw25_grouped_split_summary.json `
   --summary-md docs/dataset_split_summary.md `
@@ -109,9 +124,21 @@ python scripts/create_grouped_split.py `
 Falls `python` unter Windows nicht im PATH liegt, kann die lokale virtuelle
 Umgebung oder der gebuendelte Python-Interpreter verwendet werden.
 
-In dieser Arbeitsumgebung war kein echter `data/raw`-Dataset-Root vorhanden.
-Deshalb wurden noch keine echten Split-Statistiken und kein echtes
-Split-Manifest erzeugt.
+Der erzeugte Split umfasst:
+
+| Split | Bilder | Gruppen | Anteil |
+| --- | ---: | ---: | ---: |
+| train | 3225 | 1083 | 70.0% |
+| val | 691 | 232 | 15.0% |
+| test | 691 | 232 | 15.0% |
+
+Die Klassenverteilung pro Split lautet:
+
+| Split | Erste Bearbeitungssufe Viertel | Finaler Zustand Viertel | Fräszustand Viertel | Zweite Bearbeitungsstufe Viertel |
+| --- | ---: | ---: | ---: | ---: |
+| train | 430 | 1019 | 838 | 938 |
+| val | 92 | 218 | 180 | 201 |
+| test | 92 | 218 | 180 | 201 |
 
 ## 6. Leakage-Pruefung
 
@@ -126,6 +153,17 @@ Nach der Split-Erstellung prueft das Skript:
 Die Pruefung "keine `group_id` in mehreren Splits" ist zwingend. Falls sie
 fehlschlaegt, darf das Manifest nicht fuer Training oder Evaluation verwendet
 werden.
+
+Im echten Splitlauf waren alle Pruefungen erfolgreich:
+
+| Pruefung | Ergebnis |
+| --- | --- |
+| Keine `group_id` in mehreren Splits | bestanden |
+| Leaking groups | 0 |
+| Alle Bilder genau einmal zugeordnet | bestanden |
+| Manifest-Zeilen | 4607 |
+| Doppelte `image_id` | 0 |
+| Doppelte `relative_path` | 0 |
 
 ## 7. Preprocessing-Vorbereitung
 
@@ -151,11 +189,17 @@ Versioniert werden:
 
 - [scripts/create_grouped_split.py](../scripts/create_grouped_split.py);
 - diese Dokumentation;
-- nach lokaler Pruefung optional die kleine Split-Summary
-  `docs/dataset_split_summary.md`;
-- nach Datenschutzpruefung optional das kleine Split-Manifest
-  `data/splits/bmw25_grouped_split_manifest.csv` und die Summary
+- die kleine Split-Summary `docs/dataset_split_summary.md`;
+- das Split-Manifest `data/splits/bmw25_grouped_split_manifest.csv`;
+- die maschinenlesbare Summary
   `data/splits/bmw25_grouped_split_summary.json`.
+
+Das Manifest wurde vor dem Commit geprueft. Es enthaelt relative Pfade,
+Klassenlabels, Split-Zuordnungen, `group_id`-Werte und technische Bildmetadaten,
+aber keine absoluten lokalen Pfade, keine Bilddaten, keine Hashes, keine
+Modellartefakte und keine Checkpoints. Die relativen Dateinamen und
+`group_id`-Werte wurden fuer diesen Arbeitsstand als unkritisch versionierbar
+eingestuft.
 
 Lokal bleiben:
 
@@ -167,6 +211,6 @@ Lokal bleiben:
 - Split-Manifeste, falls relative Dateinamen oder Gruppen-IDs als sensibel
   eingestuft werden.
 
-Vor einem Commit echter Split-Dateien muss geprueft werden, ob die enthaltenen
-relativen Dateinamen und `group_id`-Werte datenschutzrechtlich versionierbar
-sind. Absolute lokale Pfade duerfen nicht in versionierbaren Dateien stehen.
+Absolute lokale Pfade duerfen nicht in versionierbaren Dateien stehen. Der
+lokale Dataset-Root wird deshalb nur im Arbeitskontext und nicht in den
+versionierten Split-Dateien dokumentiert.

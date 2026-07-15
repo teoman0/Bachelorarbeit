@@ -1,0 +1,88 @@
+{
+  "generated_at_utc": "2026-07-15T08:58:03.814578+00:00",
+  "script": "scripts/create_grouped_split.py",
+  "method_note": "Grouped split manifest from local image metadata only. No image data is copied, no patches are generated, and no model training is started.",
+  "dataset_root": {
+    "local_path_recorded": false,
+    "note": "Absolute local dataset paths are intentionally not stored in this summary."
+  },
+  "seed": 42,
+  "ratios": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "git_commit": "b43efa0193b606be8bb5e0b05b265025072ad032",
+  "package_versions": {
+    "python": "3.12.13",
+    "Pillow": "12.2.0"
+  },
+  "grouping": {
+    "regex": "^(?P<group>.+?)[_-](?:q|quarter|viertel)[_-]?[1-4]$",
+    "logic": "Remove q1-q4, quarter, or viertel suffix from filename stem; fall back to full stem.",
+    "images_with_quarter_suffix": 4607,
+    "images_without_detected_quarter_suffix": 0,
+    "multi_label_group_count": 19
+  },
+  "dataset": {
+    "total_images": 4607,
+    "num_classes": 4,
+    "class_names": [
+      "Erste Bearbeitungssufe Viertel",
+      "Finaler Zustand Viertel",
+      "Fräszustand Viertel",
+      "Zweite Bearbeitungsstufe Viertel"
+    ],
+    "class_distribution": {
+      "Erste Bearbeitungssufe Viertel": 614,
+      "Finaler Zustand Viertel": 1455,
+      "Fräszustand Viertel": 1198,
+      "Zweite Bearbeitungsstufe Viertel": 1340
+    },
+    "num_groups": 1547
+  },
+  "splits": {
+    "train": {
+      "images": 3225,
+      "groups": 1083,
+      "image_share": 0.7000217060994139,
+      "class_distribution": {
+        "Erste Bearbeitungssufe Viertel": 430,
+        "Finaler Zustand Viertel": 1019,
+        "Fräszustand Viertel": 838,
+        "Zweite Bearbeitungsstufe Viertel": 938
+      }
+    },
+    "val": {
+      "images": 691,
+      "groups": 232,
+      "image_share": 0.14998914695029303,
+      "class_distribution": {
+        "Erste Bearbeitungssufe Viertel": 92,
+        "Finaler Zustand Viertel": 218,
+        "Fräszustand Viertel": 180,
+        "Zweite Bearbeitungsstufe Viertel": 201
+      }
+    },
+    "test": {
+      "images": 691,
+      "groups": 232,
+      "image_share": 0.14998914695029303,
+      "class_distribution": {
+        "Erste Bearbeitungssufe Viertel": 92,
+        "Finaler Zustand Viertel": 218,
+        "Fräszustand Viertel": 180,
+        "Zweite Bearbeitungsstufe Viertel": 201
+      }
+    }
+  },
+  "checks": {
+    "no_group_id_in_multiple_splits": true,
+    "leaking_group_count": 0,
+    "all_images_assigned_once": true,
+    "manifest_rows": 4607,
+    "input_records": 4607,
+    "duplicate_image_id_count": 0,
+    "duplicate_relative_path_count": 0
+  }
+}
