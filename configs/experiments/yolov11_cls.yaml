@@ -1,15 +1,21 @@
 experiment_name: "yolov11_cls_bmw25_global"
 model_family: "yolov11_cls"
-model_variant: "yolo11n-cls"  # TODO: Validate yolo11n-cls vs yolo11s-cls on validation only.
+model_variant: "yolo11n-cls"
+optional_candidate_variant: "yolo11s-cls"  # Validate only after successful n-model run and only on validation.
 split_manifest: "data/splits/bmw25_grouped_split_manifest.csv"
-image_size: [224, 224]
-batch_size: 16  # TODO: Adjust to local GPU/CPU memory before real training.
-epochs: 1  # Smoke-test default only; set final value before real training.
+image_size: [320, 320]
+fallback_image_size: [224, 224]
+batch_size: 16
+epochs: 75
+patience: 15
 seed: 42
 optimizer: "auto"  # Ultralytics default unless explicitly overridden.
 learning_rate: 0.001  # TODO: Confirm for the chosen Ultralytics setup.
 weight_decay: 0.0005
 pretrained: true
+amp: true
+device: 0
+workers: 4
 
 augmentation:
   horizontal_flip: "to_validate"
@@ -19,14 +25,26 @@ augmentation:
   random_crop_or_resize: "light"
   val_test: "deterministic_preprocessing_only"
 
-checkpoint_metric: "macro_f1"  # Select checkpoints on validation split only.
+checkpoint_metric: "macro_f1"  # Used by the separate project evaluation workflow.
+yolo_val_metric: "top1"  # Ultralytics checkpointing may rely on built-in classification metrics, not macro-F1.
 output_dir: "outputs/global_classification/yolov11_cls"
+
+smoke_test:
+  enabled_by_cli_only: true
+  max_samples_per_split: 2
+  epochs: 1
+  note: "Technical check only; not interpretable as model performance."
 
 yolo:
   workflow: "classification"
-  local_dataset_structure: "prepare locally from split manifest, preferably with symlinks or links"
+  local_dataset_structure: "prepare locally from split manifest with symlinks or hardlinks"
   temp_dataset_dir: "outputs/global_classification/yolov11_cls/yolo_dataset"
+  link_method: "auto"  # Try symlink first, then hardlink. Copying is disabled.
   copy_images: false
+  project: "runs/global_classification"
+  name: "yolov11_cls_bmw25_global"
+  train_splits: ["train", "val"]
+  held_out_test_split: "test"
 
 artifact_policy:
   commit_config: true
@@ -41,3 +59,5 @@ notes:
   - "Uses existing grouped split manifest; do not create a new split."
   - "Test split is reserved for final evaluation only."
   - "Real Ultralytics runs and weights must remain local."
+  - "RTX 4060 Ti 8 GB start point: imgsz 320, batch 16, AMP enabled."
+  - "If Ultralytics checkpointing uses top1/validation loss internally, macro-F1 is computed later via the separate evaluation workflow."

@@ -63,6 +63,46 @@ kopiert werden duerfen, muss diese Struktur lokal in `outputs/` oder `runs/`
 vorbereitet werden, bevorzugt per Symlink- oder Link-Struktur. Echte
 Modellgewichte und YOLO-Runs bleiben lokal.
 
+Fuer YOLOv11-cls wird die lokale Classification-Struktur direkt aus dem
+versionierten Split-Manifest erzeugt:
+
+```text
+outputs/global_classification/yolov11_cls/yolo_dataset/
+  train/<klasse>/
+  val/<klasse>/
+  test/<klasse>/
+```
+
+Das Skript nutzt keine Bildkopien. Standardmaessig wird zuerst ein Symlink
+versucht; falls das unter Windows wegen Rechten nicht funktioniert, wird ein
+Hardlink angelegt. Die lokale Summary dokumentiert Klassenmapping,
+Split-Zaehler und verwendete Link-Methoden. Die Test-Ordner werden nur fuer
+die spaetere finale Evaluation materialisiert und duerfen nicht fuer Training,
+Validation, Early Stopping oder Modellwahl verwendet werden.
+
+Der Hardware-Startpunkt ist ein lokales System mit NVIDIA GeForce RTX 4060 Ti
+und 8 GB dediziertem VRAM. Die geplante YOLO-Startkonfiguration lautet:
+
+| Parameter | Startwert |
+| --- | --- |
+| Modell | `yolo11n-cls` |
+| optionale Variante | `yolo11s-cls` nur nach erfolgreichem n-Modell und nur anhand Validation |
+| Bildgroesse | `320` |
+| Fallback-Bildgroesse | `224` |
+| Batch Size | `16` |
+| Epochen | `75` |
+| Patience | `15` |
+| AMP / mixed precision | `true` |
+| Device | `0` |
+| Workers | `4` |
+
+Ultralytics nutzt fuer Classification-Training intern eigene
+Validierungsmetriken, typischerweise Top-1-Accuracy oder Validation Loss, fuer
+Checkpointing und Fortschritt. Die in dieser Arbeit bevorzugte Macro-F1 wird
+deshalb separat ueber den eigenen Evaluationsworkflow auf Prediction-Dateien
+berechnet und nicht als automatisch verfuegbare Ultralytics-Checkpointmetrik
+vorausgesetzt.
+
 ### DINOv3 frozen backbone + Klassifikationskopf
 
 DINOv3 wird als eingefrorener Feature Extractor geplant; trainiert wird nur ein
@@ -81,10 +121,12 @@ als Architekturkontrolle bzw. from-scratch-Untergrenze.
 
 ## 6. Eingabegroesse
 
-Als konservativer gemeinsamer Startpunkt ist `224 x 224` vorgesehen. Diese
+Als konservativer gemeinsamer ViT-Startpunkt ist `224 x 224` vorgesehen. Diese
 Groesse ist mit DeiT-Tiny kompatibel und erleichtert den Vergleich mit
-ViT-basierten Verfahren. Fuer YOLOv11-cls kann spaeter optional `320 x 320`
-validiert werden, falls Hardware und Validierungsergebnisse dafuer sprechen.
+ViT-basierten Verfahren. Fuer YOLOv11-cls wird aufgrund der lokalen RTX 4060 Ti
+mit 8 GB VRAM ein aussagekraeftiger Startlauf mit `320 x 320` und Batch Size
+`16` vorbereitet. `224 x 224` bleibt der Fallback, falls Speicher- oder
+Laufzeitprobleme auftreten.
 
 Nicht-quadratische oder abweichend grosse Bilder werden deterministisch
 behandelt. Ein `resize_pad`-Ansatz ist methodisch vorsichtiger als unkritisches
@@ -126,6 +168,58 @@ Vorgesehene lokale Speicherorte:
 
 Diese Pfade sind durch `.gitignore` abgedeckt und werden nicht committed.
 
+## 10.1 YOLO-Befehle
+
+Die folgenden Befehle nutzen den lokalen Dataset-Root nur als CLI-Parameter.
+Dieser Pfad wird nicht in versionierte Dateien geschrieben.
+
+Dry-Run mit Manifest-, Klassen- und Dateipruefung:
+
+```powershell
+python scripts/train_yolov11_cls.py `
+  --dataset-root <lokaler_dataset_root> `
+  --dry-run `
+  --smoke-test `
+  --max-smoke-samples 2
+```
+
+Lokale YOLO-Dataset-Struktur aus dem Split-Manifest erzeugen:
+
+```powershell
+python scripts/train_yolov11_cls.py `
+  --dataset-root <lokaler_dataset_root> `
+  --prepare-yolo-dataset `
+  --link-method auto
+```
+
+Technischer 1-Epochen-Testlauf, nur zur Pipeline-Pruefung:
+
+```powershell
+python scripts/train_yolov11_cls.py `
+  --dataset-root <lokaler_dataset_root> `
+  --allow-training `
+  --epochs-override 1
+```
+
+Dieser 1-Epochen-Lauf darf nicht als Modellleistung interpretiert werden. Er
+prueft nur, ob Ultralytics, Datenstruktur, GPU-Zugriff, AMP und lokale
+Run-Ausgaben technisch zusammenspielen.
+
+Geplanter aussagekraeftiger YOLO-Startlauf:
+
+```powershell
+python scripts/train_yolov11_cls.py `
+  --dataset-root <lokaler_dataset_root> `
+  --allow-training
+```
+
+Dieser Lauf nutzt die Config `configs/experiments/yolov11_cls.yaml` mit
+`yolo11n-cls`, `imgsz=320`, `batch=16`, `epochs=75`, `patience=15`,
+`amp=true`, `device=0` und `workers=4`. Vor dem Start muss die lokale
+YOLO-Dataset-Struktur existieren. Falls `yolo11s-cls` spaeter betrachtet wird,
+darf diese Entscheidung nur nach erfolgreichem n-Modell und anhand des
+Validierungssplits getroffen werden.
+
 ## 11. Versionierung
 
 Versioniert werden:
@@ -151,6 +245,8 @@ Lokal bleiben:
 | Punkt | Status | Hinweis |
 | --- | --- | --- |
 | YOLOv11-Variante | offen | `yolo11n-cls` ist konservativer Startpunkt; Gewichtsquelle und Lizenzkontext muessen final dokumentiert werden. |
+| YOLO-Dataset-Struktur | vorbereitet | Wird lokal aus dem Split-Manifest mit Symlinks oder Hardlinks erzeugt; nicht committen. |
+| YOLO-Techniktest | offen | Optionaler 1-Epochen-Lauf nur nach explizitem Start; keine Ergebnisinterpretation. |
 | DINOv3-Gewichtsquelle | offen | Lokale Bereitstellung oder erlaubter Download muss vor Training geklaert werden. |
 | DINOv3-Kopfarchitektur | offen | Linearer Kopf als Startpunkt; MLP nur nach Validierungsbegruendung. |
 | DeiT-Trainingsdauer | offen | From-scratch kann instabil sein; Epochen und Regularisierung nur ueber Validierung festlegen. |
