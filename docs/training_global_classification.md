@@ -220,6 +220,59 @@ YOLO-Dataset-Struktur existieren. Falls `yolo11s-cls` spaeter betrachtet wird,
 darf diese Entscheidung nur nach erfolgreichem n-Modell und anhand des
 Validierungssplits getroffen werden.
 
+## 10.2 YOLO-Validation-Predictions und Metriken
+
+Nach einem abgeschlossenen YOLOv11-cls-Lauf werden die bevorzugten Metriken
+aus einer lokalen Prediction-Tabelle berechnet. Dieser Schritt startet kein
+Training. Standardmaessig erlaubt das Exportskript nur den
+Validierungssplit. Der Testsplit ist gesperrt und darf nur fuer die spaetere
+finale Evaluation mit `--allow-test` explizit freigeschaltet werden.
+
+Val-Predictions aus einem lokalen `best.pt` exportieren:
+
+```powershell
+python scripts/export_yolo_predictions.py `
+  --model runs/global_classification/<run_name>/weights/best.pt `
+  --manifest data/splits/bmw25_grouped_split_manifest.csv `
+  --yolo-dataset-dir outputs/global_classification/yolov11_cls/yolo_dataset `
+  --split val `
+  --output-dir outputs/global_classification/<run_name>/evaluation_val `
+  --imgsz 320 `
+  --batch 16 `
+  --device 0 `
+  --model-name yolo11n-cls `
+  --config-id <run_name> `
+  --run-name <run_name> `
+  --seed 42
+```
+
+Die erzeugte Datei `predictions_val.csv` enthaelt `image_id`,
+`relative_path`, `split`, `true_label`, `predicted_label`, Run-Metadaten und
+je eine `prob_<klasse>`-Spalte, sofern Ultralytics Wahrscheinlichkeiten
+bereitstellt. Lokale Dateipfade werden nur relativ zur YOLO-Dataset-Struktur
+geschrieben; absolute Dataset- oder Benutzerpfade gehoeren nicht in die
+Prediction-CSV.
+
+Val-Metriken aus der Prediction-Tabelle berechnen:
+
+```powershell
+python scripts/evaluate_predictions.py `
+  --predictions outputs/global_classification/<run_name>/evaluation_val/predictions_val.csv `
+  --output-dir outputs/global_classification/<run_name>/evaluation_val `
+  --split val `
+  --model-name yolo11n-cls `
+  --config-id <run_name> `
+  --split-version bmw25_grouped `
+  --seed 42
+```
+
+Der Evaluator berechnet Accuracy, Balanced Accuracy, Macro-F1,
+klassenweise Precision/Recall/F1 und eine Confusion Matrix. Diese Werte sind
+Validierungsmetriken. Sie duerfen fuer Modellentscheidungen, Checkpoint-Wahl
+und Hyperparameterentscheidungen genutzt werden, sind aber keine finale
+Testleistung. Alle Prediction-, Metrik- und Confusion-Matrix-Dateien bleiben
+lokal unter `outputs/` und werden nicht committed.
+
 ## 11. Versionierung
 
 Versioniert werden:
