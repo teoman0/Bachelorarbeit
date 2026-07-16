@@ -106,11 +106,41 @@ vorausgesetzt.
 ### DINOv3 frozen backbone + Klassifikationskopf
 
 DINOv3 wird als eingefrorener Feature Extractor geplant; trainiert wird nur ein
-linearer oder kleiner Klassifikationskopf. DINOv3-Gewichte werden nicht
-committed. Falls Gewichte nicht automatisch geladen werden sollen, muss die
-lokale Gewichtsquelle vor dem echten Training dokumentiert und per Config oder
-lokalem Parameter bereitgestellt werden. Feature-Caches bleiben lokal und sind
-nicht Teil des Repositories.
+linearer Klassifikationskopf. Primaerer Startpunkt ist
+`facebook/dinov3-vitb16-pretrain-lvd1689m` mit `224 x 224` Eingabegroesse,
+Batch Size `16`, AdamW, `learning_rate=0.001`, `weight_decay=0.0001` und
+`seed=42`. ViT-B/16 ist der Kompromiss zwischen Modellstaerke und lokalem
+Hardwarebedarf. ViT-L/16 wird fuer den ersten Lauf nicht verwendet, weil 8 GB
+VRAM knapp werden koennen; `facebook/dinov3-vits16-pretrain-lvd1689m` bleibt
+der Fallback, falls ViT-B/16 nicht sauber laedt oder laeuft.
+
+Der Backbone bleibt eingefroren, weil die Arbeit die Qualitaet der
+DINOv3-Repraesentationen fuer die Schleifgradbewertung untersuchen soll. Der
+lineare Head ist der erste saubere Ansatz; ein MLP-Head kann spaeter nur als
+separate Validierungsvariante betrachtet werden. Checkpoint-Auswahl erfolgt
+ueber Validation Macro-F1.
+
+DINOv3-Gewichte werden nicht committed. Der Zugriff erfolgt ueber Hugging Face
+oder eine lokal bereitgestellte Gewichtsquelle. `allow_download` ist in der
+Config standardmaessig `false`; Downloads sind nur mit explizitem
+CLI-Override erlaubt. Hugging-Face-Tokens oder andere Credentials duerfen nie
+in das Repository geschrieben werden. Feature-Caches, Head-Checkpoints,
+Predictions und Metriken bleiben lokal und ignored.
+
+Der geplante Ablauf ist:
+
+1. `--dry-run`: Config, Manifest, Klassenmapping und lokale Train/Val-Dateien
+   pruefen; kein Modell laden.
+2. `--check-model`: DINOv3 nur lokal laden oder mit explizitem
+   `--allow-download`; Feature-Dimension und Repraesentation pruefen; kein
+   Training.
+3. `--smoke-test`: sehr wenige Train/Val-Bilder laden, Features erzeugen und
+   einen kurzen Forward/Backward-Test des linearen Heads ausfuehren; keine
+   Ergebnisinterpretation.
+4. `--allow-training`: spaeterer echter Head-Trainingslauf nach erneuter
+   expliziter Bestaetigung; nutzt Train und Validation, nicht Test.
+
+Der detaillierte Plan liegt in [dinov3_training_plan.md](dinov3_training_plan.md).
 
 ### DeiT-Tiny from scratch
 
@@ -275,6 +305,46 @@ lokal unter `outputs/` und werden nicht committed.
 
 Die dokumentierte YOLO-Validierungsentscheidung zwischen `yolo11n-cls` und
 `yolo11s-cls` liegt in [yolo_validation_decision.md](yolo_validation_decision.md).
+
+## 10.3 DINOv3-Befehle
+
+Die folgenden Befehle verwenden den lokalen Dataset-Root nur als
+CLI-Parameter. Der Pfad wird nicht in versionierte Dateien geschrieben.
+
+DINOv3-Dry-Run ohne Modellladen:
+
+```powershell
+python scripts/train_dinov3_head.py `
+  --dataset-root <lokaler_dataset_root> `
+  --dry-run
+```
+
+Modellladepruefung ohne Download:
+
+```powershell
+python scripts/train_dinov3_head.py `
+  --dataset-root <lokaler_dataset_root> `
+  --check-model
+```
+
+Falls die Gewichte nicht lokal verfuegbar sind, bricht der Modellcheck ab.
+Ein Download ueber Hugging Face darf nur nach expliziter Entscheidung mit
+`--allow-download` erfolgen. Tokens oder Credentials werden nicht im
+Repository gespeichert.
+
+Kleiner Smoke-Test fuer Backbone-Features und linearen Head:
+
+```powershell
+python scripts/train_dinov3_head.py `
+  --dataset-root <lokaler_dataset_root> `
+  --smoke-test `
+  --max-smoke-samples 2
+```
+
+Der Smoke-Test nutzt nur sehr wenige Train/Val-Bilder und ist nicht als
+Modellleistung interpretierbar. Ein echter Head-Trainingslauf wird erst nach
+erneuter expliziter Bestaetigung mit `--allow-training` gestartet. Das Testset
+bleibt in allen Vorbereitungsmodi unberuehrt.
 
 ## 11. Versionierung
 

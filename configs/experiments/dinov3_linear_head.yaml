@@ -1,10 +1,12 @@
-experiment_name: "dinov3_linear_head_bmw25_global"
+experiment_name: "dinov3_linear_head_bmw25_seed42"
 model_family: "dinov3_linear_head"
-model_variant: "<dinov3_backbone_variant>"  # TODO: Fill exact local/approved DINOv3 backbone.
+model_variant: "facebook/dinov3-vitb16-pretrain-lvd1689m"
+fallback_model_variant: "facebook/dinov3-vits16-pretrain-lvd1689m"
 split_manifest: "data/splits/bmw25_grouped_split_manifest.csv"
 image_size: [224, 224]
-batch_size: 16  # TODO: Adjust after dry-run and hardware check.
-epochs: 1  # Smoke-test default only; set final value before real training.
+batch_size: 16
+batch_size_fallback: 8
+epochs: 50
 seed: 42
 optimizer: "adamw"
 learning_rate: 0.001  # Head-only starting point; tune on validation only.
@@ -12,6 +14,7 @@ weight_decay: 0.0001
 pretrained: true
 freeze_backbone: true
 head: "linear"
+feature_representation: "pooler_output_or_cls_token"
 
 augmentation:
   horizontal_flip: "to_validate"
@@ -22,24 +25,41 @@ augmentation:
   val_test: "deterministic_preprocessing_only"
 
 checkpoint_metric: "macro_f1"  # Select checkpoints on validation split only.
-output_dir: "outputs/global_classification/dinov3_linear_head"
+output_dir: "outputs/global_classification/dinov3_linear_head_bmw25_seed42"
 
 dinov3:
-  weights_source: "<local_dinov3_weights_or_model_id>"
+  weights_source: "huggingface"
+  model_id: "facebook/dinov3-vitb16-pretrain-lvd1689m"
+  fallback_model_id: "facebook/dinov3-vits16-pretrain-lvd1689m"
   allow_download: false
+  allow_download_cli_override: true
   feature_cache: "optional_local_only"
   feature_cache_dir: "data/cache/dinov3_features"
+
+training:
+  amp: true
+  device: 0
+  num_workers: 0
+  smoke_max_samples_per_split: 2
+  save_val_predictions: true
+  save_val_metrics: true
+  save_checkpoints_local_only: true
 
 artifact_policy:
   commit_config: true
   commit_run_metadata: false
   commit_raw_data: false
+  commit_outputs: false
   commit_feature_cache: false
   commit_weights: false
   commit_checkpoints: false
+  commit_predictions: false
+  commit_metrics: false
   commit_large_outputs: false
 
 notes:
   - "Frozen DINOv3 backbone plus trainable linear classification head."
-  - "DINOv3 weights must be provided locally or through an explicitly approved source."
+  - "Primary backbone is ViT-B/16; ViT-S/16 remains the fallback for loading or VRAM problems."
+  - "DINOv3 weights must be available locally or downloaded only with an explicit CLI override."
   - "No DINOv3 weights or feature caches are committed."
+  - "The test split is reserved for final evaluation and is not used for model selection."
