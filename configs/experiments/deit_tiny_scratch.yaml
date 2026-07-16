@@ -1,0 +1,41 @@
+experiment_name: "deit_tiny_scratch_bmw25_global"
+model_family: "deit_tiny_scratch"
+model_variant: "deit_tiny_patch16_224"
+split_manifest: "data/splits/bmw25_grouped_split_manifest.csv"
+image_size: [224, 224]
+batch_size: 16  # TODO: Adjust to available hardware.
+epochs: 1  # Smoke-test default only; set final value before real training.
+seed: 42
+optimizer: "adamw"
+learning_rate: 0.0005  # TODO: Tune on validation only.
+weight_decay: 0.05
+pretrained: false
+
+augmentation:
+  horizontal_flip: "to_validate"
+  vertical_flip: "to_validate"
+  rotate_90: "to_validate"
+  brightness_contrast: "light"
+  random_crop_or_resize: "light"
+  val_test: "deterministic_preprocessing_only"
+
+checkpoint_metric: "macro_f1"  # Select checkpoints on validation split only.
+output_dir: "outputs/global_classification/deit_tiny_scratch"
+
+deit:
+  source: "timm"
+  pretrained: false
+  role: "from_scratch_vit_control"
+
+artifact_policy:
+  commit_config: true
+  commit_run_metadata: false
+  commit_raw_data: false
+  commit_weights: false
+  commit_checkpoints: false
+  commit_large_outputs: false
+
+notes:
+  - "Architecture baseline from scratch; no external pretrained weights."
+  - "Not directly comparable to DINOv3 in terms of pretraining information."
+  - "Use validation split only for hyperparameters and checkpoint selection."

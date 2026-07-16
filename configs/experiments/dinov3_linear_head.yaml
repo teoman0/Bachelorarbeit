@@ -1,0 +1,45 @@
+experiment_name: "dinov3_linear_head_bmw25_global"
+model_family: "dinov3_linear_head"
+model_variant: "<dinov3_backbone_variant>"  # TODO: Fill exact local/approved DINOv3 backbone.
+split_manifest: "data/splits/bmw25_grouped_split_manifest.csv"
+image_size: [224, 224]
+batch_size: 16  # TODO: Adjust after dry-run and hardware check.
+epochs: 1  # Smoke-test default only; set final value before real training.
+seed: 42
+optimizer: "adamw"
+learning_rate: 0.001  # Head-only starting point; tune on validation only.
+weight_decay: 0.0001
+pretrained: true
+freeze_backbone: true
+head: "linear"
+
+augmentation:
+  horizontal_flip: "to_validate"
+  vertical_flip: "to_validate"
+  rotate_90: "to_validate"
+  brightness_contrast: "light"
+  random_crop_or_resize: "light"
+  val_test: "deterministic_preprocessing_only"
+
+checkpoint_metric: "macro_f1"  # Select checkpoints on validation split only.
+output_dir: "outputs/global_classification/dinov3_linear_head"
+
+dinov3:
+  weights_source: "<local_dinov3_weights_or_model_id>"
+  allow_download: false
+  feature_cache: "optional_local_only"
+  feature_cache_dir: "data/cache/dinov3_features"
+
+artifact_policy:
+  commit_config: true
+  commit_run_metadata: false
+  commit_raw_data: false
+  commit_feature_cache: false
+  commit_weights: false
+  commit_checkpoints: false
+  commit_large_outputs: false
+
+notes:
+  - "Frozen DINOv3 backbone plus trainable linear classification head."
+  - "DINOv3 weights must be provided locally or through an explicitly approved source."
+  - "No DINOv3 weights or feature caches are committed."

@@ -1,0 +1,43 @@
+experiment_name: "yolov11_cls_bmw25_global"
+model_family: "yolov11_cls"
+model_variant: "yolo11n-cls"  # TODO: Validate yolo11n-cls vs yolo11s-cls on validation only.
+split_manifest: "data/splits/bmw25_grouped_split_manifest.csv"
+image_size: [224, 224]
+batch_size: 16  # TODO: Adjust to local GPU/CPU memory before real training.
+epochs: 1  # Smoke-test default only; set final value before real training.
+seed: 42
+optimizer: "auto"  # Ultralytics default unless explicitly overridden.
+learning_rate: 0.001  # TODO: Confirm for the chosen Ultralytics setup.
+weight_decay: 0.0005
+pretrained: true
+
+augmentation:
+  horizontal_flip: "to_validate"
+  vertical_flip: "to_validate"
+  rotate_90: "to_validate"
+  brightness_contrast: "light"
+  random_crop_or_resize: "light"
+  val_test: "deterministic_preprocessing_only"
+
+checkpoint_metric: "macro_f1"  # Select checkpoints on validation split only.
+output_dir: "outputs/global_classification/yolov11_cls"
+
+yolo:
+  workflow: "classification"
+  local_dataset_structure: "prepare locally from split manifest, preferably with symlinks or links"
+  temp_dataset_dir: "outputs/global_classification/yolov11_cls/yolo_dataset"
+  copy_images: false
+
+artifact_policy:
+  commit_config: true
+  commit_run_metadata: false
+  commit_raw_data: false
+  commit_prepared_yolo_dataset: false
+  commit_weights: false
+  commit_checkpoints: false
+  commit_large_outputs: false
+
+notes:
+  - "Uses existing grouped split manifest; do not create a new split."
+  - "Test split is reserved for final evaluation only."
+  - "Real Ultralytics runs and weights must remain local."
