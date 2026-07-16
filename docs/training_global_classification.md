@@ -141,6 +141,8 @@ Der geplante Ablauf ist:
    expliziter Bestaetigung; nutzt Train und Validation, nicht Test.
 
 Der detaillierte Plan liegt in [dinov3_training_plan.md](dinov3_training_plan.md).
+Das erste DINOv3-Validierungsergebnis ist in
+[dinov3_validation_result.md](dinov3_validation_result.md) dokumentiert.
 
 ### DeiT-Tiny from scratch
 
