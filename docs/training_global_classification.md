@@ -273,6 +273,9 @@ und Hyperparameterentscheidungen genutzt werden, sind aber keine finale
 Testleistung. Alle Prediction-, Metrik- und Confusion-Matrix-Dateien bleiben
 lokal unter `outputs/` und werden nicht committed.
 
+Die dokumentierte YOLO-Validierungsentscheidung zwischen `yolo11n-cls` und
+`yolo11s-cls` liegt in [yolo_validation_decision.md](yolo_validation_decision.md).
+
 ## 11. Versionierung
 
 Versioniert werden:
