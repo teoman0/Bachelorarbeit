@@ -1,6 +1,6 @@
 # Training der globalen Klassifikationsmodelle
 
-Stand: 2026-07-16
+Stand: 2026-07-17
 
 Diese Datei bereitet das Kapitel "Durchfuehrung - Training der globalen
 Klassifikationsmodelle" vor. Sie beschreibt die geplanten Trainingspipelines
@@ -171,6 +171,11 @@ Der geplante Ablauf ist:
    expliziter Bestaetigung; nutzt Train und Validation, nicht Test.
 
 Der detaillierte Plan liegt in [deit_training_plan.md](deit_training_plan.md).
+Der finalisierte Validierungsstand des from-scratch-Kontrollmodells ist in
+[deit_validation_result.md](deit_validation_result.md) dokumentiert. DeiT-Tiny
+bleibt auf Validation deutlich hinter den vortrainierten Ansaetzen zurueck und
+wird deshalb als Architekturkontrolle ohne externe Vortrainingsinformation
+eingeordnet.
 
 ## 6. Eingabegroesse
 
