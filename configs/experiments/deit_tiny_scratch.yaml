@@ -1,13 +1,15 @@
-experiment_name: "deit_tiny_scratch_bmw25_global"
+experiment_name: "deit_tiny_scratch_bmw25_seed42"
 model_family: "deit_tiny_scratch"
 model_variant: "deit_tiny_patch16_224"
+model_source: "timm"
 split_manifest: "data/splits/bmw25_grouped_split_manifest.csv"
 image_size: [224, 224]
-batch_size: 16  # TODO: Adjust to available hardware.
-epochs: 1  # Smoke-test default only; set final value before real training.
+batch_size: 16
+batch_size_fallback: 8
+epochs: 150
 seed: 42
 optimizer: "adamw"
-learning_rate: 0.0005  # TODO: Tune on validation only.
+learning_rate: 0.0005
 weight_decay: 0.05
 pretrained: false
 
@@ -20,22 +22,37 @@ augmentation:
   val_test: "deterministic_preprocessing_only"
 
 checkpoint_metric: "macro_f1"  # Select checkpoints on validation split only.
-output_dir: "outputs/global_classification/deit_tiny_scratch"
+output_dir: "outputs/global_classification/deit_tiny_scratch_bmw25_seed42"
 
 deit:
   source: "timm"
+  model_variant: "deit_tiny_patch16_224"
   pretrained: false
   role: "from_scratch_vit_control"
+
+training:
+  amp: true
+  device: 0
+  num_workers: 0
+  smoke_max_samples_per_split: 2
+  save_val_predictions: true
+  save_val_metrics: true
+  save_checkpoints_local_only: true
 
 artifact_policy:
   commit_config: true
   commit_run_metadata: false
   commit_raw_data: false
+  commit_outputs: false
+  commit_feature_cache: false
   commit_weights: false
   commit_checkpoints: false
+  commit_predictions: false
+  commit_metrics: false
   commit_large_outputs: false
 
 notes:
   - "Architecture baseline from scratch; no external pretrained weights."
   - "Not directly comparable to DINOv3 in terms of pretraining information."
   - "Use validation split only for hyperparameters and checkpoint selection."
+  - "The test split is reserved for final evaluation and is not used for model selection."

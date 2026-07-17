@@ -147,9 +147,30 @@ Das erste DINOv3-Validierungsergebnis ist in
 ### DeiT-Tiny from scratch
 
 DeiT-Tiny from scratch ist die ViT-Kontrollarchitektur ohne externe
-vortrainierte Gewichte. Die Config sieht `pretrained: false` vor. Dieser Ansatz
-nutzt nicht dieselbe Vortrainingsinformation wie DINOv3 und dient deshalb eher
-als Architekturkontrolle bzw. from-scratch-Untergrenze.
+vortrainierte Gewichte. Verwendet wird `deit_tiny_patch16_224` aus `timm` mit
+`pretrained=false`, `224 x 224` Eingabegroesse, Batch Size `16`, AdamW,
+`learning_rate=0.0005`, `weight_decay=0.05`, `epochs=150` und `seed=42`.
+Dieser Ansatz nutzt nicht dieselbe Vortrainingsinformation wie DINOv3 und ist
+deshalb eine Architekturkontrolle bzw. from-scratch-Untergrenze.
+
+Weil der Datensatz fuer ein Transformer-Modell ohne Vortraining klein ist, ist
+dieser Ansatz erwartbar schwieriger und potenziell instabiler als DINOv3 mit
+vortrainiertem frozen Backbone. Es werden keine pretrained weights geladen
+oder committed. Checkpoint-Auswahl erfolgt ausschliesslich ueber Validation
+Macro-F1; das Testset bleibt bis zur finalen Evaluation unberuehrt.
+
+Der geplante Ablauf ist:
+
+1. `--dry-run`: Config, Manifest, Klassenmapping und lokale Train/Val-Dateien
+   pruefen; kein Modelltraining.
+2. `--check-model`: `timm.create_model(..., pretrained=False, num_classes=4)`
+   ausfuehren und Parameterzahl/Device pruefen; kein Training.
+3. `--smoke-test`: wenige Train/Val-Bilder laden und einen kurzen
+   Forward/Backward-Test ausfuehren; keine Ergebnisinterpretation.
+4. `--allow-training`: spaeterer echter from-scratch-Lauf nach erneuter
+   expliziter Bestaetigung; nutzt Train und Validation, nicht Test.
+
+Der detaillierte Plan liegt in [deit_training_plan.md](deit_training_plan.md).
 
 ## 6. Eingabegroesse
 
@@ -347,6 +368,41 @@ Der Smoke-Test nutzt nur sehr wenige Train/Val-Bilder und ist nicht als
 Modellleistung interpretierbar. Ein echter Head-Trainingslauf wird erst nach
 erneuter expliziter Bestaetigung mit `--allow-training` gestartet. Das Testset
 bleibt in allen Vorbereitungsmodi unberuehrt.
+
+## 10.4 DeiT-Tiny-Befehle
+
+Die folgenden Befehle verwenden den lokalen Dataset-Root nur als
+CLI-Parameter. Der Pfad wird nicht in versionierte Dateien geschrieben.
+
+DeiT-Dry-Run:
+
+```powershell
+python scripts/train_deit_tiny.py `
+  --dataset-root <lokaler_dataset_root> `
+  --dry-run
+```
+
+Modellpruefung ohne pretrained weights:
+
+```powershell
+python scripts/train_deit_tiny.py `
+  --dataset-root <lokaler_dataset_root> `
+  --check-model
+```
+
+Kleiner Smoke-Test:
+
+```powershell
+python scripts/train_deit_tiny.py `
+  --dataset-root <lokaler_dataset_root> `
+  --smoke-test `
+  --max-smoke-samples 2
+```
+
+Der Smoke-Test nutzt nur sehr wenige Train/Val-Bilder und ist nicht als
+Modellleistung interpretierbar. Ein echter DeiT-Trainingslauf wird erst nach
+erneuter expliziter Bestaetigung mit `--allow-training` gestartet. Das Testset
+bleibt in allen Modi unberuehrt.
 
 ## 11. Versionierung
 
