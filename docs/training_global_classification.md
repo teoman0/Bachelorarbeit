@@ -144,6 +144,12 @@ Der detaillierte Plan liegt in [dinov3_training_plan.md](dinov3_training_plan.md
 Das erste DINOv3-Validierungsergebnis ist in
 [dinov3_validation_result.md](dinov3_validation_result.md) dokumentiert.
 
+Als zusaetzliche Validierungsvariante ist ein vorsichtiges Partial Fine-Tuning
+der letzten zwei DINOv3-Transformer-Bloecke vorbereitet. Diese Variante ist
+keine Ersetzung des frozen-Backbone-Ansatzes, sondern prueft, ob eine geringe
+domaenenspezifische Anpassung auf Validation einen Mehrwert bringt. Der Plan
+liegt in [dinov3_partial_finetune_plan.md](dinov3_partial_finetune_plan.md).
+
 ### DeiT-Tiny from scratch
 
 DeiT-Tiny from scratch ist die ViT-Kontrollarchitektur ohne externe
