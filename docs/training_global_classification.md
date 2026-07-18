@@ -1,6 +1,6 @@
 # Training der globalen Klassifikationsmodelle
 
-Stand: 2026-07-17
+Stand: 2026-07-18
 
 Diese Datei bereitet das Kapitel "Durchfuehrung - Training der globalen
 Klassifikationsmodelle" vor. Sie beschreibt die geplanten Trainingspipelines
@@ -149,6 +149,11 @@ der letzten zwei DINOv3-Transformer-Bloecke vorbereitet. Diese Variante ist
 keine Ersetzung des frozen-Backbone-Ansatzes, sondern prueft, ob eine geringe
 domaenenspezifische Anpassung auf Validation einen Mehrwert bringt. Der Plan
 liegt in [dinov3_partial_finetune_plan.md](dinov3_partial_finetune_plan.md).
+Der abgeschlossene Validierungslauf ist in
+[dinov3_partial_finetune_result.md](dinov3_partial_finetune_result.md)
+dokumentiert. Auf Validation verbessert die Variante den Macro-F1 gegenueber
+dem frozen DINOv3-Head von `0.9555180393` auf `0.9696503456`; das Testset
+blieb unberuehrt.
 
 ### DeiT-Tiny from scratch
 
