@@ -71,6 +71,8 @@ class RegionHeadContext:
     ignored_train_records: list[RegionRecord]
     ignored_val_records: list[RegionRecord]
     source_split_counts: dict[str, int]
+    special_label: str
+    include_special_label: bool
     crop_mode: str
     context_margin: float
 
@@ -120,7 +122,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-download", action="store_true", help="Allow Transformers to download DINOv3 weights.")
     parser.add_argument("--crop-mode", choices=sorted(VALID_CROP_MODES), default=None)
     parser.add_argument("--context-margin", type=float, default=None)
-    parser.add_argument("--include-nicht-bewertbar", action="store_true", help="Report special-label rows as ignored; never part of 4-class loss.")
+    parser.add_argument(
+        "--include-nicht-bewertbar",
+        action="store_true",
+        help="Include the special label if it is present in class_order; default four-class configs exclude it.",
+    )
     parser.add_argument("--max-smoke-samples", type=int, default=None)
     parser.add_argument("--batch-override", type=int, default=None)
     parser.add_argument("--epochs-override", type=int, default=None)
@@ -216,8 +222,21 @@ def prepare_context(args: argparse.Namespace) -> RegionHeadContext:
     train_split = str(data_cfg.get("train_split", "train"))
     val_split = str(data_cfg.get("val_split", "val"))
     special_label = str(data_cfg.get("special_label", "Nicht_bewertbar"))
-    train_records, ignored_train = filter_training_regions(rows, train_split, class_to_index, special_label)
-    val_records, ignored_val = filter_training_regions(rows, val_split, class_to_index, special_label)
+    include_special_label = bool(args.include_nicht_bewertbar or data_cfg.get("include_nicht_bewertbar", False))
+    train_records, ignored_train = filter_training_regions(
+        rows,
+        train_split,
+        class_to_index,
+        special_label,
+        include_special_label=include_special_label,
+    )
+    val_records, ignored_val = filter_training_regions(
+        rows,
+        val_split,
+        class_to_index,
+        special_label,
+        include_special_label=include_special_label,
+    )
     if not train_records:
         raise ValueError("No train regions remain after filtering")
     if not val_records:
@@ -244,6 +263,8 @@ def prepare_context(args: argparse.Namespace) -> RegionHeadContext:
         ignored_train_records=ignored_train,
         ignored_val_records=ignored_val,
         source_split_counts=count_splits(rows),
+        special_label=special_label,
+        include_special_label=include_special_label,
         crop_mode=crop_mode,
         context_margin=context_margin,
     )
@@ -254,7 +275,15 @@ def class_mapping_from_config_and_checkpoint(config: dict[str, Any], checkpoint:
     configured_order = [str(label) for label in config.get("class_order", [])]
     if configured_order:
         configured_mapping = {label: index for index, label in enumerate(configured_order)}
-        if configured_mapping != checkpoint_mapping:
+        data_cfg = config.get("data", {})
+        include_special = bool(data_cfg.get("include_nicht_bewertbar", False))
+        special_label = str(data_cfg.get("special_label", "Nicht_bewertbar"))
+        configured_non_special = [label for label in configured_order if label != special_label]
+        if configured_mapping == checkpoint_mapping:
+            return configured_mapping
+        if include_special and special_label in configured_mapping and set(configured_non_special) == set(checkpoint_mapping):
+            return configured_mapping
+        else:
             raise ValueError(
                 "Config class_order does not match checkpoint class_to_index. "
                 f"config={configured_mapping}, checkpoint={checkpoint_mapping}"
@@ -267,13 +296,20 @@ def filter_training_regions(
     split: str,
     class_to_index: dict[str, int],
     special_label: str,
+    *,
+    include_special_label: bool,
 ) -> tuple[list[RegionRecord], list[RegionRecord]]:
     selected: list[RegionRecord] = []
     ignored: list[RegionRecord] = []
     for row in rows:
         if row.split != split or not row.matched_manifest or row.split == "test":
             continue
-        if row.is_global_class and row.mapped_label in class_to_index and row.mapped_label != special_label:
+        if row.mapped_label == special_label:
+            if include_special_label and special_label in class_to_index:
+                selected.append(row)
+            else:
+                ignored.append(row)
+        elif row.is_global_class and row.mapped_label in class_to_index:
             selected.append(row)
         else:
             ignored.append(row)
@@ -563,6 +599,8 @@ def evaluate_head(
 
 
 def base_metadata(context: RegionHeadContext, mode: str) -> dict[str, Any]:
+    train_special = sum(1 for row in context.train_records if row.mapped_label == context.special_label)
+    val_special = sum(1 for row in context.val_records if row.mapped_label == context.special_label)
     return {
         "created_at_utc": dt.datetime.now(dt.UTC).isoformat(),
         "script": "scripts/train_dinov3_region_head.py",
@@ -575,13 +613,19 @@ def base_metadata(context: RegionHeadContext, mode: str) -> dict[str, Any]:
         "dataset_splits_used": ["train", "val"],
         "test_usage_note": "Test regions are excluded and are never loaded by this workflow.",
         "test_rows_in_region_table": context.source_split_counts.get("test", 0),
-        "nicht_bewertbar_excluded": True,
+        "special_label": context.special_label,
+        "include_special_label": context.include_special_label,
+        "nicht_bewertbar_excluded": not context.include_special_label,
         "crop_mode": context.crop_mode,
         "context_margin": context.context_margin,
         "image_size": list(context.image_size),
         "class_to_index": context.class_to_index,
-        "train_regions_4class": len(context.train_records),
-        "val_regions_4class": len(context.val_records),
+        "train_regions_selected": len(context.train_records),
+        "val_regions_selected": len(context.val_records),
+        "train_regions_4class": len(context.train_records) - train_special,
+        "val_regions_4class": len(context.val_records) - val_special,
+        "train_regions_special_label": train_special,
+        "val_regions_special_label": val_special,
         "ignored_train_regions": len(context.ignored_train_records),
         "ignored_val_regions": len(context.ignored_val_records),
         "train_class_distribution": class_distribution(context.train_records),
@@ -598,7 +642,7 @@ def run_dry_run(context: RegionHeadContext) -> dict[str, Any]:
         {
             "outputs_written": False,
             "test_regions_excluded": True,
-            "nicht_bewertbar_excluded_from_4class": True,
+            "nicht_bewertbar_excluded_from_4class": not context.include_special_label,
         }
     )
     return metadata

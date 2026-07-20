@@ -1,0 +1,107 @@
+experiment_name: "dinov3_region_head_5class_bmw25_seed42"
+model_family: "dinov3_region_head"
+model_id: "facebook/dinov3-vitb16-pretrain-lvd1689m"
+feature_representation: "pooler_output_or_cls_token"
+
+inputs:
+  region_annotations: "outputs/region_analysis/cvat_region_analysis/region_annotations.csv"
+  checkpoint: "outputs/global_classification/dinov3_partial_finetune_last2_bmw25_seed42/checkpoints/best_model.pt"
+  manual_root_env: "BMW25_MANUAL_ALL_ROOT"
+  images_dir: "images"
+  split_manifest: "data/splits/bmw25_grouped_split_manifest.csv"
+
+class_order:
+  - "Erste Bearbeitungssufe Viertel"
+  - "Zweite Bearbeitungsstufe Viertel"
+  - "Fräszustand Viertel"
+  - "Finaler Zustand Viertel"
+  - "Nicht_bewertbar"
+
+data:
+  train_split: "train"
+  val_split: "val"
+  test_policy: "excluded"
+  special_label: "Nicht_bewertbar"
+  include_nicht_bewertbar: true
+  crop_mode: "stretch_resize"
+  optional_crop_mode: "pad_square"
+  context_margin: 0.0
+  image_size: [224, 224]
+
+head:
+  type: "mlp"
+  input_dim: 768
+  hidden_dim: 128
+  dropout: 0.2
+  activation: "relu"
+  num_classes: 5
+
+training:
+  backbone: "frozen"
+  train_backbone: false
+  epochs: 100
+  patience: 15
+  batch_size: 16
+  batch_size_fallback: 8
+  optimizer: "adamw"
+  learning_rate: 0.001
+  weight_decay: 0.01
+  checkpoint_metric: "macro_f1"
+  seed: 42
+  device: 0
+  amp: true
+  num_workers: 0
+  class_weights: true
+  smoke_max_samples_per_split: 2
+  allow_download: false
+
+augmentation:
+  train_only: true
+  brightness: 0.08
+  contrast: 0.08
+  horizontal_flip_probability: 0.5
+  vertical_flip_probability: 0.5
+  val: "deterministic"
+
+output:
+  output_dir: "outputs/region_analysis/dinov3_region_head_5class_bmw25_seed42"
+  run_metadata: "run_metadata.json"
+  training_log: "training_log.csv"
+  training_metrics: "training_metrics.csv"
+  predictions_val: "predictions_regions_val.csv"
+  metrics_json: "val_region_metrics.json"
+  metrics_csv: "val_region_metrics.csv"
+  confusion_matrix: "confusion_matrix_val_regions.csv"
+  checkpoints_dir: "checkpoints"
+  best_checkpoint: "best_model.pt"
+  last_checkpoint: "last_model.pt"
+  visualizations_dir: "visualizations"
+  visualization_index: "region_visualization_index.csv"
+
+visualization:
+  enabled_only_with_cli_flags: true
+  split: "val"
+  max_visualization_images: 12
+  overlay_types:
+    - "ground_truth"
+    - "predictions"
+    - "comparison"
+  crop_exports: "optional_with_export_region_images"
+
+artifact_policy:
+  commit_config: false
+  commit_script: false
+  commit_documentation: false
+  commit_outputs: false
+  commit_images: false
+  commit_predictions: false
+  commit_crops: false
+  commit_feature_cache: false
+  commit_checkpoints: false
+  commit_weights: false
+
+notes:
+  - "Local-only 5-class validation variant. Do not commit without a separate documentation decision."
+  - "DINOv3 backbone is loaded from the existing partial fine-tuning checkpoint and remains frozen."
+  - "Test regions remain excluded."
+  - "Nicht_bewertbar is included as a fifth local region-head class."

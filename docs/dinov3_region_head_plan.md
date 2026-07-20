@@ -179,3 +179,8 @@ Der abgeschlossene Validierungslauf des lokalen Region-Heads ist dokumentiert
 in [dinov3_region_head_result.md](dinov3_region_head_result.md). Die dort
 genannten Werte sind Validierungsergebnisse auf CVAT-Bounding-Box-Regionen,
 keine Testwerte und keine semantische Segmentierungsbewertung.
+
+Die zusaetzliche 5-Klassen-Variante mit `Nicht_bewertbar` als Sonderklasse ist
+in [dinov3_region_head_5class_result.md](dinov3_region_head_5class_result.md)
+dokumentiert. Sie dient als praxisnahes Zusatzexperiment; fuer die
+Hauptauswertung bleibt der 4-Klassen-Region-Head massgeblich.
