@@ -20,7 +20,7 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageDraw, ImageOps
 import yaml
 
 
@@ -51,6 +51,13 @@ REGION_REQUIRED_COLUMNS = {
     "matched_manifest",
 }
 VALID_CROP_MODES = {"pad_square", "stretch_resize"}
+DEFAULT_ABLATION_VARIANTS = [
+    {"crop_mode": "pad_square", "context_margin": 0.0},
+    {"crop_mode": "pad_square", "context_margin": 0.1},
+    {"crop_mode": "pad_square", "context_margin": 0.25},
+    {"crop_mode": "pad_square", "context_margin": 0.5},
+    {"crop_mode": "stretch_resize", "context_margin": 0.0},
+]
 
 
 @dataclass(frozen=True)
@@ -99,6 +106,33 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-regions", type=int, default=None, help="Optional local cap for debugging inference.")
     parser.add_argument("--crop-mode", default=None, choices=sorted(VALID_CROP_MODES), help="Region crop preprocessing mode.")
     parser.add_argument(
+        "--context-margin",
+        type=float,
+        default=None,
+        help="Expand the box by this fraction of box width/height before cropping.",
+    )
+    parser.add_argument(
+        "--run-ablation",
+        action="store_true",
+        help="Run the configured validation crop/context ablation. Requires --allow-evaluate.",
+    )
+    parser.add_argument(
+        "--export-region-images",
+        action="store_true",
+        help="Export individual region crop images locally. Requires --allow-evaluate.",
+    )
+    parser.add_argument(
+        "--export-overlays",
+        action="store_true",
+        help="Export local ground-truth, prediction, and comparison overlay images. Requires --allow-evaluate.",
+    )
+    parser.add_argument(
+        "--max-visualization-images",
+        type=int,
+        default=None,
+        help="Limit the number of source images used for visualization exports.",
+    )
+    parser.add_argument(
         "--include-nicht-bewertbar",
         action="store_true",
         help="Infer Nicht_bewertbar rows separately; they remain excluded from four-class metrics.",
@@ -112,6 +146,16 @@ def parse_args() -> argparse.Namespace:
         args.dry_run = True
     if args.max_regions is not None and args.max_regions < 1:
         parser.error("--max-regions must be at least 1")
+    if args.context_margin is not None and args.context_margin < 0.0:
+        parser.error("--context-margin must be non-negative")
+    if args.max_visualization_images is not None and args.max_visualization_images < 1:
+        parser.error("--max-visualization-images must be at least 1")
+    if args.run_ablation and not args.allow_evaluate:
+        parser.error("--run-ablation requires --allow-evaluate")
+    if args.run_ablation and args.split not in (None, "val"):
+        parser.error("--run-ablation is restricted to --split val")
+    if (args.export_region_images or args.export_overlays) and not args.allow_evaluate:
+        parser.error("Visualization exports require --allow-evaluate")
     return args
 
 
@@ -300,6 +344,41 @@ def selected_crop_mode(context: EvalContext, args: argparse.Namespace) -> str:
     return mode
 
 
+def selected_context_margin(context: EvalContext, args: argparse.Namespace) -> float:
+    margin = float(
+        args.context_margin
+        if args.context_margin is not None
+        else context.config.get("evaluation", {}).get("context_margin", 0.0)
+    )
+    if margin < 0.0:
+        raise ValueError("--context-margin must be non-negative")
+    return margin
+
+
+def configured_ablation_variants(context: EvalContext) -> list[dict[str, Any]]:
+    raw_variants = context.config.get("evaluation", {}).get("ablation_variants", DEFAULT_ABLATION_VARIANTS)
+    variants: list[dict[str, Any]] = []
+    for index, raw in enumerate(raw_variants, start=1):
+        crop_mode = str(raw.get("crop_mode", "pad_square"))
+        if crop_mode not in VALID_CROP_MODES:
+            raise ValueError(f"Unsupported ablation crop_mode: {crop_mode}")
+        context_margin = float(raw.get("context_margin", 0.0))
+        if context_margin < 0.0:
+            raise ValueError("Ablation context_margin must be non-negative")
+        variants.append(
+            {
+                "variant_id": f"v{index}_{crop_mode}_m{format_margin(context_margin)}",
+                "crop_mode": crop_mode,
+                "context_margin": context_margin,
+            }
+        )
+    return variants
+
+
+def format_margin(value: float) -> str:
+    return str(value).replace(".", "p")
+
+
 def filter_regions(
     rows: list[RegionRecord],
     *,
@@ -358,12 +437,16 @@ def count_by_label(rows: list[RegionRecord]) -> dict[str, int]:
     return counts
 
 
-def clip_box(record: RegionRecord, image: Image.Image) -> tuple[int, int, int, int]:
+def clip_box(record: RegionRecord, image: Image.Image, context_margin: float = 0.0) -> tuple[int, int, int, int]:
     width, height = image.size
-    x_min = min(max(record.x_min, 0.0), float(width))
-    y_min = min(max(record.y_min, 0.0), float(height))
-    x_max = min(max(record.x_max, 0.0), float(width))
-    y_max = min(max(record.y_max, 0.0), float(height))
+    raw_x_min, raw_x_max = sorted([record.x_min, record.x_max])
+    raw_y_min, raw_y_max = sorted([record.y_min, record.y_max])
+    box_width = raw_x_max - raw_x_min
+    box_height = raw_y_max - raw_y_min
+    x_min = min(max(raw_x_min - context_margin * box_width, 0.0), float(width))
+    y_min = min(max(raw_y_min - context_margin * box_height, 0.0), float(height))
+    x_max = min(max(raw_x_max + context_margin * box_width, 0.0), float(width))
+    y_max = min(max(raw_y_max + context_margin * box_height, 0.0), float(height))
     if x_max <= x_min or y_max <= y_min:
         raise ValueError(f"Region has empty clipped box: {record.region_id}")
     return (
@@ -382,7 +465,12 @@ def pad_square(image: Image.Image) -> Image.Image:
     return canvas
 
 
-def crop_region_image(record: RegionRecord, context: EvalContext, crop_mode: str) -> Image.Image:
+def load_region_crop(
+    record: RegionRecord,
+    context: EvalContext,
+    crop_mode: str,
+    context_margin: float,
+) -> tuple[Image.Image, tuple[int, int, int, int]]:
     if context.images_dir is None:
         raise ValueError("manual_root/images_dir is required for inference")
     image_path = context.images_dir / record.source_image
@@ -390,13 +478,23 @@ def crop_region_image(record: RegionRecord, context: EvalContext, crop_mode: str
         raise FileNotFoundError(f"Source image for region does not exist: {image_path}")
     with Image.open(image_path) as image:
         image = ImageOps.exif_transpose(image).convert("RGB")
-        box = clip_box(record, image)
+        box = clip_box(record, image, context_margin)
         crop = image.crop(box)
     if crop_mode == "pad_square":
         crop = pad_square(crop)
     elif crop_mode != "stretch_resize":
         raise ValueError(f"Unsupported crop_mode: {crop_mode}")
-    return crop.resize(context.image_size, Image.Resampling.BICUBIC)
+    return crop.resize(context.image_size, Image.Resampling.BICUBIC), box
+
+
+def crop_region_image(
+    record: RegionRecord,
+    context: EvalContext,
+    crop_mode: str,
+    context_margin: float = 0.0,
+) -> Image.Image:
+    crop, _box = load_region_crop(record, context, crop_mode, context_margin)
+    return crop
 
 
 def device_from_config(context: EvalContext) -> Any:
@@ -450,6 +548,7 @@ def load_model_and_head(context: EvalContext, args: argparse.Namespace) -> tuple
 def check_model(context: EvalContext, args: argparse.Namespace) -> dict[str, Any]:
     processor, model, head, checkpoint, device = load_model_and_head(context, args)
     crop_mode = selected_crop_mode(context, args)
+    context_margin = selected_context_margin(context, args)
     return {
         "model_name": model_id_for(context, checkpoint),
         "model_class": type(model).__name__,
@@ -464,7 +563,9 @@ def check_model(context: EvalContext, args: argparse.Namespace) -> dict[str, Any
         "device": str(device),
         **cuda_info(),
         "crop_mode": crop_mode,
+        "context_margin": context_margin,
         "input_size": list(context.image_size),
+        "ablation_variants": configured_ablation_variants(context),
         "outputs_written": False,
     }
 
@@ -491,6 +592,8 @@ def dry_run(context: EvalContext, args: argparse.Namespace) -> dict[str, Any]:
             "mode": "dry_run",
             "region_table": relative_to_repo(context.region_table),
             "crop_mode": selected_crop_mode(context, args),
+            "context_margin": selected_context_margin(context, args),
+            "ablation_variants": configured_ablation_variants(context),
             "input_size": list(context.image_size),
             "outputs_written": False,
             "test_usage_note": "Test regions are excluded and are not used for this validation workflow.",
@@ -505,22 +608,40 @@ def collate_images(images: list[Image.Image], processor: Any, device: Any) -> di
     return {key: value.to(device) for key, value in inputs.items()}
 
 
-def predict_regions(context: EvalContext, args: argparse.Namespace) -> dict[str, Any]:
+def top_confusions(labels: list[str], confusion: list[list[int]], limit: int = 10) -> list[dict[str, Any]]:
+    pairs: list[tuple[int, str, str]] = []
+    for true_index, true_label in enumerate(labels):
+        for pred_index, pred_label in enumerate(labels):
+            if true_index == pred_index:
+                continue
+            count = int(confusion[true_index][pred_index])
+            if count:
+                pairs.append((count, true_label, pred_label))
+    pairs.sort(key=lambda item: item[0], reverse=True)
+    return [
+        {"count": count, "true_label": true_label, "pred_label": pred_label}
+        for count, true_label, pred_label in pairs[:limit]
+    ]
+
+
+def evaluate_variant(
+    *,
+    context: EvalContext,
+    args: argparse.Namespace,
+    selected: list[RegionRecord],
+    filter_summary: dict[str, Any],
+    processor: Any,
+    model: Any,
+    head: Any,
+    checkpoint: dict[str, Any],
+    device: Any,
+    crop_mode: str,
+    context_margin: float,
+) -> dict[str, Any]:
     import torch
 
-    rows = read_region_table(context.region_table)
-    split = selected_split(context, args)
-    crop_mode = selected_crop_mode(context, args)
-    selected, filter_summary = filter_regions(
-        rows,
-        split=split,
-        special_label=context.special_label,
-        include_special=bool(args.include_nicht_bewertbar),
-        max_regions=args.max_regions,
-    )
     if not selected:
         raise ValueError("No regions selected for inference")
-    processor, model, head, checkpoint, device = load_model_and_head(context, args)
     batch_size = int(context.config.get("evaluation", {}).get("batch_size", 16))
     labels = [context.index_to_class[index] for index in sorted(context.index_to_class)]
     prediction_rows: list[dict[str, Any]] = []
@@ -531,7 +652,12 @@ def predict_regions(context: EvalContext, args: argparse.Namespace) -> dict[str,
     with torch.no_grad():
         for start in range(0, len(selected), batch_size):
             batch_records = selected[start : start + batch_size]
-            images = [crop_region_image(record, context, crop_mode) for record in batch_records]
+            crop_items = [
+                load_region_crop(record, context, crop_mode, context_margin)
+                for record in batch_records
+            ]
+            images = [item[0] for item in crop_items]
+            crop_boxes = [item[1] for item in crop_items]
             inputs = collate_images(images, processor, device)
             outputs = model(**inputs)
             features, representation_used = extract_features(
@@ -544,6 +670,7 @@ def predict_regions(context: EvalContext, args: argparse.Namespace) -> dict[str,
             confidences = torch.max(probabilities, dim=1).values
 
             for row_index, record in enumerate(batch_records):
+                crop_box = crop_boxes[row_index]
                 pred_index = int(predictions[row_index].detach().cpu().item())
                 pred_label = context.index_to_class[pred_index]
                 is_metric_row = record.is_global_class and record.mapped_label != context.special_label
@@ -564,6 +691,12 @@ def predict_regions(context: EvalContext, args: argparse.Namespace) -> dict[str,
                     "y_min": record.raw["y_min"],
                     "x_max": record.raw["x_max"],
                     "y_max": record.raw["y_max"],
+                    "crop_x_min": crop_box[0],
+                    "crop_y_min": crop_box[1],
+                    "crop_x_max": crop_box[2],
+                    "crop_y_max": crop_box[3],
+                    "crop_mode": crop_mode,
+                    "context_margin": context_margin,
                     "pred_label": pred_label,
                     "confidence": float(confidences[row_index].detach().cpu().item()),
                     "correct": correct,
@@ -574,14 +707,6 @@ def predict_regions(context: EvalContext, args: argparse.Namespace) -> dict[str,
                 prediction_rows.append(prediction)
 
     metrics, per_class, confusion = metric_payload(y_true, y_pred, context.index_to_class)
-    context.output_dir.mkdir(parents=True, exist_ok=True)
-    output_cfg = context.config.get("output", {})
-    predictions_path = context.output_dir / str(output_cfg.get("predictions", f"predictions_regions_{split}.csv"))
-    metrics_json_path = context.output_dir / str(output_cfg.get("metrics_json", f"{split}_region_metrics.json"))
-    metrics_csv_path = context.output_dir / str(output_cfg.get("metrics_csv", f"{split}_region_metrics.csv"))
-    confusion_path = context.output_dir / str(output_cfg.get("confusion_matrix", f"confusion_matrix_{split}_regions.csv"))
-
-    write_prediction_csv(predictions_path, prediction_rows, labels)
     metrics_payload = {
         "created_by": "scripts/evaluate_dinov3_regions.py",
         "git_commit": git_commit(),
@@ -590,8 +715,9 @@ def predict_regions(context: EvalContext, args: argparse.Namespace) -> dict[str,
         "checkpoint_path": relative_to_repo(context.checkpoint_path),
         "checkpoint_epoch": checkpoint.get("epoch"),
         "region_table": relative_to_repo(context.region_table),
-        "split": split,
+        "split": filter_summary["selected_split"],
         "crop_mode": crop_mode,
+        "context_margin": context_margin,
         "input_size": list(context.image_size),
         "feature_representation_used": representation_used,
         "overall_metrics": metrics,
@@ -601,6 +727,7 @@ def predict_regions(context: EvalContext, args: argparse.Namespace) -> dict[str,
             "rows_are_true_labels": True,
             "values": confusion,
         },
+        "top_confusions": top_confusions(labels, confusion),
         "num_four_class_regions": len(y_true),
         "num_nicht_bewertbar_inferred": sum(
             1 for row in prediction_rows if row["mapped_label"] == context.special_label
@@ -608,20 +735,391 @@ def predict_regions(context: EvalContext, args: argparse.Namespace) -> dict[str,
         "filter_summary": filter_summary,
         "test_used": False,
     }
+    return {
+        "labels": labels,
+        "prediction_rows": prediction_rows,
+        "metrics": metrics,
+        "per_class": per_class,
+        "confusion": confusion,
+        "metrics_payload": metrics_payload,
+    }
+
+
+def predict_regions(context: EvalContext, args: argparse.Namespace) -> dict[str, Any]:
+    if args.run_ablation:
+        return run_ablation(context, args)
+
+    rows = read_region_table(context.region_table)
+    split = selected_split(context, args)
+    crop_mode = selected_crop_mode(context, args)
+    context_margin = selected_context_margin(context, args)
+    selected, filter_summary = filter_regions(
+        rows,
+        split=split,
+        special_label=context.special_label,
+        include_special=bool(args.include_nicht_bewertbar),
+        max_regions=args.max_regions,
+    )
+    processor, model, head, checkpoint, device = load_model_and_head(context, args)
+    result = evaluate_variant(
+        context=context,
+        args=args,
+        selected=selected,
+        filter_summary=filter_summary,
+        processor=processor,
+        model=model,
+        head=head,
+        checkpoint=checkpoint,
+        device=device,
+        crop_mode=crop_mode,
+        context_margin=context_margin,
+    )
+    context.output_dir.mkdir(parents=True, exist_ok=True)
+    output_cfg = context.config.get("output", {})
+    predictions_path = context.output_dir / str(output_cfg.get("predictions", f"predictions_regions_{split}.csv"))
+    metrics_json_path = context.output_dir / str(output_cfg.get("metrics_json", f"{split}_region_metrics.json"))
+    metrics_csv_path = context.output_dir / str(output_cfg.get("metrics_csv", f"{split}_region_metrics.csv"))
+    confusion_path = context.output_dir / str(output_cfg.get("confusion_matrix", f"confusion_matrix_{split}_regions.csv"))
+
+    write_prediction_csv(predictions_path, result["prediction_rows"], result["labels"])
+    metrics_payload = result["metrics_payload"]
     write_json(metrics_json_path, metrics_payload)
-    write_metrics_csv(metrics_csv_path, metrics, per_class, len(y_true), metrics_payload["num_nicht_bewertbar_inferred"])
-    write_confusion(confusion_path, labels, confusion)
+    write_metrics_csv(
+        metrics_csv_path,
+        result["metrics"],
+        result["per_class"],
+        metrics_payload["num_four_class_regions"],
+        metrics_payload["num_nicht_bewertbar_inferred"],
+    )
+    write_confusion(confusion_path, result["labels"], result["confusion"])
+    visualization_result: dict[str, Any] = {}
+    if args.export_region_images or args.export_overlays:
+        visualization_result = export_visualizations(
+            context=context,
+            prediction_rows=result["prediction_rows"],
+            crop_mode=crop_mode,
+            context_margin=context_margin,
+            export_region_images=bool(args.export_region_images),
+            export_overlays=bool(args.export_overlays),
+            max_visualization_images=args.max_visualization_images,
+        )
     return {
         "mode": "allow_evaluate",
         "predictions": relative_to_repo(predictions_path),
         "metrics_json": relative_to_repo(metrics_json_path),
         "metrics_csv": relative_to_repo(metrics_csv_path),
         "confusion_matrix": relative_to_repo(confusion_path),
-        "overall_metrics": metrics,
-        "num_four_class_regions": len(y_true),
+        "overall_metrics": result["metrics"],
+        "top_confusions": metrics_payload["top_confusions"],
+        "num_four_class_regions": metrics_payload["num_four_class_regions"],
         "num_nicht_bewertbar_inferred": metrics_payload["num_nicht_bewertbar_inferred"],
+        "visualizations": visualization_result,
         "test_used": False,
     }
+
+
+def run_ablation(context: EvalContext, args: argparse.Namespace) -> dict[str, Any]:
+    split = selected_split(context, args)
+    if split != "val":
+        raise ValueError("--run-ablation is restricted to split=val")
+    rows = read_region_table(context.region_table)
+    selected, filter_summary = filter_regions(
+        rows,
+        split=split,
+        special_label=context.special_label,
+        include_special=bool(args.include_nicht_bewertbar),
+        max_regions=args.max_regions,
+    )
+    processor, model, head, checkpoint, device = load_model_and_head(context, args)
+    variants = configured_ablation_variants(context)
+    ablation_results: list[dict[str, Any]] = []
+    best_payload: dict[str, Any] | None = None
+    best_result: dict[str, Any] | None = None
+    best_variant: dict[str, Any] | None = None
+
+    for variant in variants:
+        result = evaluate_variant(
+            context=context,
+            args=args,
+            selected=selected,
+            filter_summary=filter_summary,
+            processor=processor,
+            model=model,
+            head=head,
+            checkpoint=checkpoint,
+            device=device,
+            crop_mode=str(variant["crop_mode"]),
+            context_margin=float(variant["context_margin"]),
+        )
+        payload = result["metrics_payload"]
+        metrics = payload["overall_metrics"]
+        row = {
+            "variant_id": variant["variant_id"],
+            "crop_mode": variant["crop_mode"],
+            "context_margin": variant["context_margin"],
+            "accuracy": metrics["accuracy"],
+            "balanced_accuracy": metrics["balanced_accuracy"],
+            "macro_f1": metrics["macro_f1"],
+            "num_four_class_regions": payload["num_four_class_regions"],
+            "num_nicht_bewertbar_inferred": payload["num_nicht_bewertbar_inferred"],
+            "top_confusions": payload["top_confusions"],
+            "per_class_metrics": payload["per_class_metrics"],
+            "confusion_matrix": payload["confusion_matrix"],
+        }
+        ablation_results.append(row)
+        if best_payload is None or (
+            metrics["macro_f1"],
+            metrics["balanced_accuracy"],
+        ) > (
+            best_payload["overall_metrics"]["macro_f1"],
+            best_payload["overall_metrics"]["balanced_accuracy"],
+        ):
+            best_payload = payload
+            best_result = result
+            best_variant = variant
+
+    if best_payload is None or best_result is None or best_variant is None:
+        raise RuntimeError("Ablation produced no results")
+
+    output_cfg = context.config.get("output", {})
+    ablation_dir = context.output_dir / str(output_cfg.get("ablation_dir", "ablation"))
+    ablation_dir.mkdir(parents=True, exist_ok=True)
+    ablation_csv = ablation_dir / str(output_cfg.get("ablation_csv", "region_eval_ablation.csv"))
+    ablation_json = ablation_dir / str(output_cfg.get("ablation_json", "region_eval_ablation.json"))
+    write_ablation_csv(ablation_csv, ablation_results, best_variant["variant_id"])
+    write_json(
+        ablation_json,
+        {
+            "created_by": "scripts/evaluate_dinov3_regions.py",
+            "git_commit": git_commit(),
+            "package_versions": package_versions(),
+            "split": split,
+            "test_used": False,
+            "test_policy": "excluded",
+            "selection_rule": "Best by validation macro_f1, tie-breaker balanced_accuracy.",
+            "best_variant_id": best_variant["variant_id"],
+            "best_variant": best_variant,
+            "best_metrics": best_payload["overall_metrics"],
+            "num_variants": len(ablation_results),
+            "filter_summary": filter_summary,
+            "variants": ablation_results,
+        },
+    )
+
+    visualization_result: dict[str, Any] = {}
+    if args.export_region_images or args.export_overlays:
+        visualization_result = export_visualizations(
+            context=context,
+            prediction_rows=best_result["prediction_rows"],
+            crop_mode=str(best_variant["crop_mode"]),
+            context_margin=float(best_variant["context_margin"]),
+            export_region_images=bool(args.export_region_images),
+            export_overlays=bool(args.export_overlays),
+            max_visualization_images=args.max_visualization_images,
+        )
+
+    return {
+        "mode": "allow_evaluate_ablation",
+        "ablation_csv": relative_to_repo(ablation_csv),
+        "ablation_json": relative_to_repo(ablation_json),
+        "best_variant_id": best_variant["variant_id"],
+        "best_variant": best_variant,
+        "best_metrics": best_payload["overall_metrics"],
+        "num_variants": len(ablation_results),
+        "num_four_class_regions": best_payload["num_four_class_regions"],
+        "num_nicht_bewertbar_inferred": best_payload["num_nicht_bewertbar_inferred"],
+        "visualizations": visualization_result,
+        "test_used": False,
+    }
+
+
+def write_ablation_csv(path: Path, rows: list[dict[str, Any]], best_variant_id: str) -> None:
+    fieldnames = [
+        "variant_id",
+        "is_best",
+        "crop_mode",
+        "context_margin",
+        "accuracy",
+        "balanced_accuracy",
+        "macro_f1",
+        "num_four_class_regions",
+        "num_nicht_bewertbar_inferred",
+        "top_confusions",
+    ]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(
+                {
+                    "variant_id": row["variant_id"],
+                    "is_best": row["variant_id"] == best_variant_id,
+                    "crop_mode": row["crop_mode"],
+                    "context_margin": row["context_margin"],
+                    "accuracy": row["accuracy"],
+                    "balanced_accuracy": row["balanced_accuracy"],
+                    "macro_f1": row["macro_f1"],
+                    "num_four_class_regions": row["num_four_class_regions"],
+                    "num_nicht_bewertbar_inferred": row["num_nicht_bewertbar_inferred"],
+                    "top_confusions": json.dumps(row["top_confusions"], ensure_ascii=False),
+                }
+            )
+
+
+def safe_slug(value: str, max_length: int = 120) -> str:
+    normalized = value.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+    normalized = normalized.replace("Ä", "Ae").replace("Ö", "Oe").replace("Ü", "Ue")
+    slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", normalized).strip("_")
+    return (slug or "item")[:max_length]
+
+
+def text_for_draw(value: str) -> str:
+    return value.encode("latin-1", errors="replace").decode("latin-1")
+
+
+def draw_label_box(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, fill: tuple[int, int, int]) -> None:
+    text = text_for_draw(text)
+    x, y = xy
+    try:
+        bbox = draw.textbbox((x, y), text)
+        width = bbox[2] - bbox[0]
+        height = bbox[3] - bbox[1]
+    except Exception:
+        width = max(80, len(text) * 7)
+        height = 14
+    y0 = max(0, y - height - 4)
+    draw.rectangle((x, y0, x + width + 6, y0 + height + 4), fill=fill)
+    draw.text((x + 3, y0 + 2), text, fill=(255, 255, 255))
+
+
+def row_box(row: dict[str, Any]) -> tuple[int, int, int, int]:
+    return (
+        int(round(float(row["x_min"]))),
+        int(round(float(row["y_min"]))),
+        int(round(float(row["x_max"]))),
+        int(round(float(row["y_max"]))),
+    )
+
+
+def prediction_color(row: dict[str, Any]) -> tuple[int, int, int]:
+    if str(row["mapped_label"]) == "Nicht_bewertbar" or str(row["is_global_class"]).lower() != "true":
+        return (128, 128, 128)
+    return (0, 155, 72) if str(row["correct"]).lower() == "true" else (210, 35, 35)
+
+
+def draw_overlay(
+    image: Image.Image,
+    rows: list[dict[str, Any]],
+    *,
+    mode: str,
+) -> Image.Image:
+    canvas = image.copy()
+    draw = ImageDraw.Draw(canvas)
+    for row in rows:
+        box = row_box(row)
+        color = (58, 117, 216) if mode == "ground_truth" else prediction_color(row)
+        width = 5 if mode == "prediction" else 4
+        draw.rectangle(box, outline=color, width=width)
+        if mode == "ground_truth":
+            label = f"GT: {row['mapped_label']}"
+        else:
+            confidence = float(row["confidence"])
+            label = f"P: {row['pred_label']} ({confidence:.2f})"
+        draw_label_box(draw, (box[0], box[1]), label, color)
+    return canvas
+
+
+def export_visualizations(
+    *,
+    context: EvalContext,
+    prediction_rows: list[dict[str, Any]],
+    crop_mode: str,
+    context_margin: float,
+    export_region_images: bool,
+    export_overlays: bool,
+    max_visualization_images: int | None,
+) -> dict[str, Any]:
+    if context.images_dir is None:
+        raise ValueError("manual_root/images_dir is required for visualization exports")
+
+    output_cfg = context.config.get("output", {})
+    base_dir = context.output_dir / str(output_cfg.get("visualizations_dir", "visualizations"))
+    source_images = sorted({str(row["source_image"]) for row in prediction_rows})
+    if max_visualization_images is None:
+        configured_max = context.config.get("evaluation", {}).get("max_visualization_images")
+        max_visualization_images = int(configured_max) if configured_max is not None else len(source_images)
+    selected_sources = set(source_images[:max_visualization_images])
+    selected_rows = [row for row in prediction_rows if str(row["source_image"]) in selected_sources]
+    rows_by_source: dict[str, list[dict[str, Any]]] = {}
+    for row in selected_rows:
+        rows_by_source.setdefault(str(row["source_image"]), []).append(row)
+
+    outputs: dict[str, Any] = {
+        "visualizations_dir": relative_to_repo(base_dir),
+        "source_images_selected": len(rows_by_source),
+        "region_images_written": 0,
+        "ground_truth_overlays_written": 0,
+        "prediction_overlays_written": 0,
+        "comparison_images_written": 0,
+    }
+
+    if export_overlays:
+        gt_dir = base_dir / "ground_truth"
+        pred_dir = base_dir / "predictions"
+        comparison_dir = base_dir / "comparison"
+        gt_dir.mkdir(parents=True, exist_ok=True)
+        pred_dir.mkdir(parents=True, exist_ok=True)
+        comparison_dir.mkdir(parents=True, exist_ok=True)
+        for source_image, rows in rows_by_source.items():
+            image_path = context.images_dir / source_image
+            with Image.open(image_path) as image:
+                original = ImageOps.exif_transpose(image).convert("RGB")
+            gt_image = draw_overlay(original, rows, mode="ground_truth")
+            pred_image = draw_overlay(original, rows, mode="prediction")
+            stem = safe_slug(Path(source_image).stem)
+            gt_image.save(gt_dir / f"{stem}.jpg", quality=90)
+            pred_image.save(pred_dir / f"{stem}.jpg", quality=90)
+            comparison = Image.new("RGB", (gt_image.width + pred_image.width, max(gt_image.height, pred_image.height)))
+            comparison.paste(gt_image, (0, 0))
+            comparison.paste(pred_image, (gt_image.width, 0))
+            comparison.save(comparison_dir / f"{stem}.jpg", quality=90)
+            outputs["ground_truth_overlays_written"] += 1
+            outputs["prediction_overlays_written"] += 1
+            outputs["comparison_images_written"] += 1
+
+    if export_region_images:
+        crops_dir = base_dir / "crops"
+        crops_dir.mkdir(parents=True, exist_ok=True)
+        for row in selected_rows:
+            record = RegionRecord(
+                region_id=str(row["region_id"]),
+                source_image=str(row["source_image"]),
+                split=str(row["split"]),
+                original_label=str(row["original_label"]),
+                mapped_label=str(row["mapped_label"]),
+                is_global_class=str(row["is_global_class"]).lower() == "true",
+                x_min=float(row["x_min"]),
+                y_min=float(row["y_min"]),
+                x_max=float(row["x_max"]),
+                y_max=float(row["y_max"]),
+                matched_manifest=True,
+                raw={key: str(value) for key, value in row.items()},
+            )
+            crop = crop_region_image(record, context, crop_mode, context_margin)
+            correct = "na" if str(row["correct"]) == "" else str(row["correct"]).lower()
+            filename = "__".join(
+                [
+                    safe_slug(str(row["region_id"])),
+                    f"true-{safe_slug(str(row['mapped_label']))}",
+                    f"pred-{safe_slug(str(row['pred_label']))}",
+                    f"conf-{float(row['confidence']):.3f}",
+                    f"correct-{safe_slug(correct)}",
+                ]
+            )
+            crop.save(crops_dir / f"{filename}.jpg", quality=90)
+            outputs["region_images_written"] += 1
+
+    return outputs
 
 
 def write_prediction_csv(path: Path, rows: list[dict[str, Any]], labels: list[str]) -> None:
@@ -636,6 +1134,12 @@ def write_prediction_csv(path: Path, rows: list[dict[str, Any]], labels: list[st
         "y_min",
         "x_max",
         "y_max",
+        "crop_x_min",
+        "crop_y_min",
+        "crop_x_max",
+        "crop_y_max",
+        "crop_mode",
+        "context_margin",
         "pred_label",
         "confidence",
     ] + [f"prob_{label}" for label in labels] + ["correct"]

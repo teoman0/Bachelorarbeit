@@ -19,10 +19,23 @@ evaluation:
   include_nicht_bewertbar_default: false
   special_label: "Nicht_bewertbar"
   crop_mode: "pad_square"
+  context_margin: 0.0
   image_size: [224, 224]
   batch_size: 16
   device: 0
   allow_download: false
+  max_visualization_images: 20
+  ablation_variants:
+    - crop_mode: "pad_square"
+      context_margin: 0.0
+    - crop_mode: "pad_square"
+      context_margin: 0.1
+    - crop_mode: "pad_square"
+      context_margin: 0.25
+    - crop_mode: "pad_square"
+      context_margin: 0.5
+    - crop_mode: "stretch_resize"
+      context_margin: 0.0
 
 class_order:
   - "Erste Bearbeitungssufe Viertel"
@@ -36,6 +49,10 @@ output:
   metrics_json: "val_region_metrics.json"
   metrics_csv: "val_region_metrics.csv"
   confusion_matrix: "confusion_matrix_val_regions.csv"
+  ablation_dir: "ablation"
+  ablation_csv: "region_eval_ablation.csv"
+  ablation_json: "region_eval_ablation.json"
+  visualizations_dir: "visualizations"
 
 artifact_policy:
   commit_config: true
