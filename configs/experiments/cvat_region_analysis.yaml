@@ -1,0 +1,59 @@
+experiment_name: "cvat_region_analysis_manual_all"
+task: "local_rectangular_region_analysis"
+
+inputs:
+  # Local-only path. Set BMW25_MANUAL_ALL_ROOT or pass --manual-root.
+  manual_root_env: "BMW25_MANUAL_ALL_ROOT"
+  cvat_annotations: "annotations/cvat_annotations.json"
+  frame_meta: "annotations/frame_meta.json"
+  labels: "annotations/labels.json"
+  manual_manifest: "manifest.csv"
+  images_dir: "images"
+  split_manifest: "data/splits/bmw25_grouped_split_manifest.csv"
+
+label_mapping:
+  Fraeszustand: "Fräszustand Viertel"
+  Stufe_1: "Erste Bearbeitungssufe Viertel"
+  Stufe_2: "Zweite Bearbeitungsstufe Viertel"
+  Final: "Finaler Zustand Viertel"
+  Nicht_bewertbar: "Nicht_bewertbar"
+
+special_labels:
+  - "Nicht_bewertbar"
+
+matching:
+  strategy: "group_id_from_original_filename"
+  manifest_match_level: "group_id"
+  quarter_suffix_regex: "(?i)(?:[_-]q[1-4]|[_-]quarter[1-4]|[_-]viertel[1-4])$"
+  manual_prefix_regex: "(?i)^manual[_-]v\\d+[_-]+"
+  unmatched_policy: "mark_unmatched"
+
+export:
+  output_dir: "outputs/cvat_region_analysis/manual_all"
+  region_table: "region_annotations.csv"
+  summary_json: "region_annotations_summary.json"
+  crops_dir: "crops"
+  write_crops_by_default: false
+
+defaults:
+  split: "all"
+  include_nicht_bewertbar: false
+  exclude_unmatched: false
+
+artifact_policy:
+  commit_config: true
+  commit_script: true
+  commit_documentation: true
+  commit_region_table: false
+  commit_summary_json: false
+  commit_crops: false
+  commit_predictions: false
+  commit_outputs: false
+  commit_checkpoints: false
+  commit_weights: false
+
+notes:
+  - "This workflow prepares rectangular CVAT regions only; it is not semantic segmentation."
+  - "The existing grouped split manifest remains authoritative."
+  - "Test regions may be inventoried but must not be used for model selection or validation reporting."
+  - "Local paths are provided via environment variable or CLI and are not stored in versioned outputs."
