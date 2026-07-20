@@ -23,7 +23,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from PIL import ImageEnhance, ImageOps
+from PIL import Image, ImageEnhance, ImageOps
 import yaml
 
 
@@ -34,10 +34,12 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from scripts.evaluate_dinov3_regions import (  # noqa: E402
     RegionRecord,
     crop_region_image,
+    draw_overlay,
     load_checkpoint_metadata,
     read_region_table,
     relative_to_repo,
     resolve_repo_path,
+    safe_slug,
     top_confusions,
 )
 from scripts.train_dinov3_head import (  # noqa: E402
@@ -122,6 +124,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-smoke-samples", type=int, default=None)
     parser.add_argument("--batch-override", type=int, default=None)
     parser.add_argument("--epochs-override", type=int, default=None)
+    parser.add_argument(
+        "--export-region-images",
+        action="store_true",
+        help="After --allow-training, export validation region crops locally.",
+    )
+    parser.add_argument(
+        "--export-overlays",
+        action="store_true",
+        help="After --allow-training, export validation ground-truth/prediction overlays locally.",
+    )
+    parser.add_argument(
+        "--max-visualization-images",
+        type=int,
+        default=None,
+        help="Limit source images used for validation visualization exports.",
+    )
     args = parser.parse_args()
 
     active_modes = [args.dry_run, args.check_model, args.smoke_test, args.allow_training]
@@ -137,6 +155,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--batch-override must be at least 1")
     if args.epochs_override is not None and args.epochs_override < 1:
         parser.error("--epochs-override must be at least 1")
+    if args.max_visualization_images is not None and args.max_visualization_images < 1:
+        parser.error("--max-visualization-images must be at least 1")
+    if (args.export_region_images or args.export_overlays) and not args.allow_training:
+        parser.error("Visualization exports require --allow-training")
     return args
 
 
@@ -516,7 +538,15 @@ def evaluate_head(
                     "region_id": record.region_id,
                     "source_image": record.source_image,
                     "split": record.split,
+                    "original_label": record.original_label,
+                    "mapped_label": record.mapped_label,
+                    "is_global_class": record.is_global_class,
+                    "x_min": record.raw.get("x_min", record.x_min),
+                    "y_min": record.raw.get("y_min", record.y_min),
+                    "x_max": record.raw.get("x_max", record.x_max),
+                    "y_max": record.raw.get("y_max", record.y_max),
                     "true_label": context.index_to_class[true_index],
+                    "pred_label": context.index_to_class[pred_index],
                     "predicted_label": context.index_to_class[pred_index],
                     "confidence": float(confidences[row_index].detach().cpu().item()),
                     "crop_mode": context.crop_mode,
@@ -724,6 +754,7 @@ def run_training(context: RegionHeadContext, args: argparse.Namespace) -> dict[s
     epochs_without_improvement = 0
     epoch_rows: list[dict[str, Any]] = []
     best_payload: dict[str, Any] | None = None
+    best_predictions: list[dict[str, Any]] = []
     started = time.perf_counter()
 
     for epoch in range(1, effective_epochs(context, args) + 1):
@@ -772,6 +803,7 @@ def run_training(context: RegionHeadContext, args: argparse.Namespace) -> dict[s
                 feature_dim=feature_dim,
             )
             best_payload = write_validation_outputs(context, labels, val_metrics, per_class, confusion, predictions, best_epoch)
+            best_predictions = predictions
         else:
             epochs_without_improvement += 1
 
@@ -798,6 +830,18 @@ def run_training(context: RegionHeadContext, args: argparse.Namespace) -> dict[s
         feature_dim=feature_dim,
     )
     write_training_log(context.output_dir / str(output_cfg.get("training_log", "training_log.csv")), epoch_rows)
+    write_training_log(context.output_dir / str(output_cfg.get("training_metrics", "training_metrics.csv")), epoch_rows)
+    visualization_result: dict[str, Any] | None = None
+    if args.export_region_images or args.export_overlays:
+        visualization_result = export_training_visualizations(
+            context=context,
+            prediction_rows=best_predictions,
+            crop_mode=context.crop_mode,
+            context_margin=context.context_margin,
+            export_region_images=bool(args.export_region_images),
+            export_overlays=bool(args.export_overlays),
+            max_visualization_images=args.max_visualization_images,
+        )
     result = {
         "training_completed": True,
         "epochs_completed": int(epoch_rows[-1]["epoch"]),
@@ -811,7 +855,14 @@ def run_training(context: RegionHeadContext, args: argparse.Namespace) -> dict[s
             "output_dir": relative_to_repo(context.output_dir),
             "best_checkpoint": relative_to_repo(checkpoints_dir / str(output_cfg.get("best_checkpoint", "best_region_head.pt"))),
             "last_checkpoint": relative_to_repo(checkpoints_dir / str(output_cfg.get("last_checkpoint", "last_region_head.pt"))),
+            "predictions_val": relative_to_repo(context.output_dir / str(output_cfg.get("predictions_val", "predictions_val.csv"))),
+            "metrics_json": relative_to_repo(context.output_dir / str(output_cfg.get("metrics_json", "val_metrics.json"))),
+            "metrics_csv": relative_to_repo(context.output_dir / str(output_cfg.get("metrics_csv", "val_metrics.csv"))),
+            "confusion_matrix": relative_to_repo(context.output_dir / str(output_cfg.get("confusion_matrix", "confusion_matrix_val.csv"))),
+            "training_log": relative_to_repo(context.output_dir / str(output_cfg.get("training_log", "training_log.csv"))),
+            "training_metrics": relative_to_repo(context.output_dir / str(output_cfg.get("training_metrics", "training_metrics.csv"))),
         },
+        "visualizations": visualization_result,
     }
     write_json(context.output_dir / str(output_cfg.get("run_metadata", "run_metadata.json")), base_metadata(context, "training") | {"training_result": result})
     return result
@@ -883,13 +934,177 @@ def save_head_checkpoint(
     )
 
 
+def prediction_to_region(row: dict[str, Any]) -> RegionRecord:
+    return RegionRecord(
+        region_id=str(row["region_id"]),
+        source_image=str(row["source_image"]),
+        split=str(row["split"]),
+        original_label=str(row["original_label"]),
+        mapped_label=str(row["mapped_label"]),
+        is_global_class=str(row["is_global_class"]).lower() == "true",
+        x_min=float(row["x_min"]),
+        y_min=float(row["y_min"]),
+        x_max=float(row["x_max"]),
+        y_max=float(row["y_max"]),
+        matched_manifest=True,
+        raw={key: str(value) for key, value in row.items()},
+    )
+
+
+def selected_visualization_rows(
+    context: RegionHeadContext,
+    rows: list[dict[str, Any]],
+    max_visualization_images: int | None,
+) -> list[dict[str, Any]]:
+    source_images = sorted({str(row["source_image"]) for row in rows})
+    if max_visualization_images is None:
+        configured_max = context.config.get("visualization", {}).get("max_visualization_images")
+        max_visualization_images = int(configured_max) if configured_max is not None else len(source_images)
+    selected_sources = set(source_images[:max_visualization_images])
+    return [row for row in rows if str(row["source_image"]) in selected_sources]
+
+
+def export_training_visualizations(
+    *,
+    context: RegionHeadContext,
+    prediction_rows: list[dict[str, Any]],
+    crop_mode: str,
+    context_margin: float,
+    export_region_images: bool,
+    export_overlays: bool,
+    max_visualization_images: int | None,
+) -> dict[str, Any]:
+    if context.images_dir is None:
+        raise ValueError("manual_root/images_dir is required for visualization exports")
+
+    output_cfg = context.config.get("output", {})
+    base_dir = context.output_dir / str(output_cfg.get("visualizations_dir", "visualizations"))
+    selected_rows = selected_visualization_rows(context, prediction_rows, max_visualization_images)
+    rows_by_source: dict[str, list[dict[str, Any]]] = {}
+    for row in selected_rows:
+        rows_by_source.setdefault(str(row["source_image"]), []).append(row)
+
+    outputs: dict[str, Any] = {
+        "visualizations_dir": relative_to_repo(base_dir),
+        "source_images_selected": len(rows_by_source),
+        "region_images_written": 0,
+        "ground_truth_overlays_written": 0,
+        "prediction_overlays_written": 0,
+        "comparison_images_written": 0,
+        "visualization_index_rows": len(selected_rows),
+    }
+    comparison_paths: dict[str, str] = {}
+    crop_paths: dict[str, str] = {}
+
+    if export_overlays:
+        gt_dir = base_dir / "ground_truth"
+        pred_dir = base_dir / "predictions"
+        comparison_dir = base_dir / "comparison"
+        gt_dir.mkdir(parents=True, exist_ok=True)
+        pred_dir.mkdir(parents=True, exist_ok=True)
+        comparison_dir.mkdir(parents=True, exist_ok=True)
+        for source_image, rows in rows_by_source.items():
+            image_path = context.images_dir / source_image
+            with Image.open(image_path) as image:
+                original = ImageOps.exif_transpose(image).convert("RGB")
+            ground_truth = draw_overlay(original, rows, mode="ground_truth")
+            prediction = draw_overlay(original, rows, mode="prediction")
+            stem = safe_slug(Path(source_image).stem)
+            gt_path = gt_dir / f"{stem}.jpg"
+            pred_path = pred_dir / f"{stem}.jpg"
+            comparison_path = comparison_dir / f"{stem}.jpg"
+            ground_truth.save(gt_path, quality=90)
+            prediction.save(pred_path, quality=90)
+            comparison = Image.new(
+                "RGB",
+                (ground_truth.width + prediction.width, max(ground_truth.height, prediction.height)),
+            )
+            comparison.paste(ground_truth, (0, 0))
+            comparison.paste(prediction, (ground_truth.width, 0))
+            comparison.save(comparison_path, quality=90)
+            comparison_paths[source_image] = relative_to_repo(comparison_path)
+            outputs["ground_truth_overlays_written"] += 1
+            outputs["prediction_overlays_written"] += 1
+            outputs["comparison_images_written"] += 1
+
+    if export_region_images:
+        crops_dir = base_dir / "crops"
+        crops_dir.mkdir(parents=True, exist_ok=True)
+        for row in selected_rows:
+            record = prediction_to_region(row)
+            crop = crop_region_image(record, context, crop_mode, context_margin)
+            correct = "na" if str(row.get("correct", "")) == "" else str(row["correct"]).lower()
+            filename = "__".join(
+                [
+                    safe_slug(str(row["region_id"])),
+                    f"true-{safe_slug(str(row['mapped_label']))}",
+                    f"pred-{safe_slug(str(row['pred_label']))}",
+                    f"conf-{float(row['confidence']):.3f}",
+                    f"correct-{safe_slug(correct)}",
+                ]
+            )
+            crop_path = crops_dir / f"{filename}.jpg"
+            crop.save(crop_path, quality=90)
+            crop_paths[str(row["region_id"])] = relative_to_repo(crop_path)
+            outputs["region_images_written"] += 1
+
+    index_path = base_dir / str(output_cfg.get("visualization_index", "region_visualization_index.csv"))
+    write_visualization_index(index_path, selected_rows, comparison_paths, crop_paths)
+    outputs["visualization_index"] = relative_to_repo(index_path)
+    return outputs
+
+
+def write_visualization_index(
+    path: Path,
+    rows: list[dict[str, Any]],
+    comparison_paths: dict[str, str],
+    crop_paths: dict[str, str],
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = [
+        "image_id",
+        "region_id",
+        "true_label",
+        "pred_label",
+        "confidence",
+        "correct",
+        "visualization_path",
+        "crop_path",
+    ]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            source_image = str(row["source_image"])
+            writer.writerow(
+                {
+                    "image_id": safe_slug(Path(source_image).stem),
+                    "region_id": row["region_id"],
+                    "true_label": row["mapped_label"],
+                    "pred_label": row["pred_label"],
+                    "confidence": row["confidence"],
+                    "correct": row["correct"],
+                    "visualization_path": comparison_paths.get(source_image, ""),
+                    "crop_path": crop_paths.get(str(row["region_id"]), ""),
+                }
+            )
+
+
 def write_predictions(path: Path, rows: list[dict[str, Any]], labels: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "region_id",
         "source_image",
         "split",
+        "original_label",
+        "mapped_label",
+        "is_global_class",
+        "x_min",
+        "y_min",
+        "x_max",
+        "y_max",
         "true_label",
+        "pred_label",
         "predicted_label",
         "confidence",
         "crop_mode",

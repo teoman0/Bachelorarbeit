@@ -70,19 +70,33 @@ output:
   output_dir: "outputs/region_analysis/dinov3_region_head_bmw25_seed42"
   run_metadata: "run_metadata.json"
   training_log: "training_log.csv"
-  predictions_val: "predictions_val.csv"
-  metrics_json: "val_metrics.json"
-  metrics_csv: "val_metrics.csv"
-  confusion_matrix: "confusion_matrix_val.csv"
+  training_metrics: "training_metrics.csv"
+  predictions_val: "predictions_regions_val.csv"
+  metrics_json: "val_region_metrics.json"
+  metrics_csv: "val_region_metrics.csv"
+  confusion_matrix: "confusion_matrix_val_regions.csv"
   checkpoints_dir: "checkpoints"
-  best_checkpoint: "best_region_head.pt"
-  last_checkpoint: "last_region_head.pt"
+  best_checkpoint: "best_model.pt"
+  last_checkpoint: "last_model.pt"
+  visualizations_dir: "visualizations"
+  visualization_index: "region_visualization_index.csv"
+
+visualization:
+  enabled_only_with_cli_flags: true
+  split: "val"
+  max_visualization_images: 12
+  overlay_types:
+    - "ground_truth"
+    - "predictions"
+    - "comparison"
+  crop_exports: "optional_with_export_region_images"
 
 artifact_policy:
   commit_config: true
   commit_script: true
   commit_documentation: true
   commit_outputs: false
+  commit_images: false
   commit_predictions: false
   commit_crops: false
   commit_feature_cache: false

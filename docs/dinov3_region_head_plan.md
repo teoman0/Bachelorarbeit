@@ -126,8 +126,15 @@ python scripts/train_dinov3_region_head.py `
   --manual-root <lokales_manual_all_verzeichnis> `
   --allow-training `
   --crop-mode stretch_resize `
-  --context-margin 0.0
+  --context-margin 0.0 `
+  --export-overlays `
+  --export-region-images `
+  --max-visualization-images 12
 ```
+
+Die Visualisierungsoptionen sind bewusst an `--allow-training` gekoppelt. Ein
+Dry-Run, Modellcheck oder Smoke-Test schreibt weiterhin keine Outputs,
+Predictions, Bilder oder Checkpoints.
 
 ## Lokale Artefakte
 
@@ -141,12 +148,27 @@ Moegliche Dateien:
 
 - `run_metadata.json`
 - `training_log.csv`
-- `predictions_val.csv`
-- `val_metrics.json`
-- `val_metrics.csv`
-- `confusion_matrix_val.csv`
-- `checkpoints/best_region_head.pt`
-- `checkpoints/last_region_head.pt`
+- `training_metrics.csv`
+- `predictions_regions_val.csv`
+- `val_region_metrics.json`
+- `val_region_metrics.csv`
+- `confusion_matrix_val_regions.csv`
+- `checkpoints/best_model.pt`
+- `checkpoints/last_model.pt`
+
+Optional koennen nach dem Training lokale Visualisierungen fuer den
+Validierungssplit geschrieben werden:
+
+- `visualizations/ground_truth/`
+- `visualizations/predictions/`
+- `visualizations/comparison/`
+- `visualizations/crops/`
+- `visualizations/region_visualization_index.csv`
+
+Die Visualisierungen zeigen ausschliesslich Val-Regionen. Testregionen bleiben
+vollstaendig ausgeschlossen. `Nicht_bewertbar` bleibt aus Training und
+4-Klassen-Metrik ausgeschlossen; falls solche Regionen spaeter explizit
+visualisiert wuerden, sind sie als Sonderklasse neutral zu behandeln.
 
 Diese Outputs, Predictions, Checkpoints, Gewichte und lokale Artefakte bleiben
 ignored und werden nicht committed.
