@@ -1,0 +1,56 @@
+experiment_name: "dinov3_region_eval_bmw25_seed42"
+model_family: "dinov3_region_eval"
+model_id: "facebook/dinov3-vitb16-pretrain-lvd1689m"
+feature_representation: "pooler_output_or_cls_token"
+
+inputs:
+  region_annotations: "outputs/region_analysis/cvat_region_analysis/region_annotations.csv"
+  region_summary: "outputs/region_analysis/cvat_region_analysis/summary.json"
+  checkpoint: "outputs/global_classification/dinov3_partial_finetune_last2_bmw25_seed42/checkpoints/best_model.pt"
+  # Local-only path. Set BMW25_MANUAL_ALL_ROOT or pass --manual-root for --allow-evaluate.
+  manual_root_env: "BMW25_MANUAL_ALL_ROOT"
+  images_dir: "images"
+  split_manifest: "data/splits/bmw25_grouped_split_manifest.csv"
+
+evaluation:
+  default_split: "val"
+  allowed_splits: ["train", "val"]
+  test_policy: "excluded"
+  include_nicht_bewertbar_default: false
+  special_label: "Nicht_bewertbar"
+  crop_mode: "pad_square"
+  image_size: [224, 224]
+  batch_size: 16
+  device: 0
+  allow_download: false
+
+class_order:
+  - "Erste Bearbeitungssufe Viertel"
+  - "Finaler Zustand Viertel"
+  - "Fräszustand Viertel"
+  - "Zweite Bearbeitungsstufe Viertel"
+
+output:
+  output_dir: "outputs/region_analysis/dinov3_region_eval_bmw25_seed42"
+  predictions: "predictions_regions_val.csv"
+  metrics_json: "val_region_metrics.json"
+  metrics_csv: "val_region_metrics.csv"
+  confusion_matrix: "confusion_matrix_val_regions.csv"
+
+artifact_policy:
+  commit_config: true
+  commit_script: true
+  commit_documentation: true
+  commit_predictions: false
+  commit_metrics: false
+  commit_crops: false
+  commit_overlays: false
+  commit_outputs: false
+  commit_checkpoints: false
+  commit_weights: false
+
+notes:
+  - "This is rectangular local region evaluation, not semantic segmentation."
+  - "No training is started by this workflow."
+  - "The test split is excluded from this validation workflow."
+  - "Nicht_bewertbar can be inferred separately but is not part of the four-class metrics."
