@@ -345,6 +345,11 @@ lokal unter `outputs/` und werden nicht committed.
 Die dokumentierte YOLO-Validierungsentscheidung zwischen `yolo11n-cls` und
 `yolo11s-cls` liegt in [yolo_validation_decision.md](yolo_validation_decision.md).
 
+Die ergaenzende lokale DINOv3-Region-Head-Auswertung auf CVAT-Bounding-Box-
+Regionen ist in [dinov3_region_head_result.md](dinov3_region_head_result.md)
+dokumentiert. Sie ist als regionenbasierte Plausibilisierung zu verstehen,
+nicht als semantische Segmentierungsbewertung.
+
 ## 10.3 DINOv3-Befehle
 
 Die folgenden Befehle verwenden den lokalen Dataset-Root nur als

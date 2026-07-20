@@ -172,3 +172,10 @@ visualisiert wuerden, sind sie als Sonderklasse neutral zu behandeln.
 
 Diese Outputs, Predictions, Checkpoints, Gewichte und lokale Artefakte bleiben
 ignored und werden nicht committed.
+
+## Ergebnisdokumentation
+
+Der abgeschlossene Validierungslauf des lokalen Region-Heads ist dokumentiert
+in [dinov3_region_head_result.md](dinov3_region_head_result.md). Die dort
+genannten Werte sind Validierungsergebnisse auf CVAT-Bounding-Box-Regionen,
+keine Testwerte und keine semantische Segmentierungsbewertung.
