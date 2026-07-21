@@ -72,17 +72,18 @@ Klassen-F1:
 | Klasse | F1 |
 | --- | ---: |
 | Erste | 0.9195 |
-| Final | 0.9640 |
-| Fraeszustand | 0.9917 |
 | Zweite | 0.9479 |
+| Fraeszustand | 0.9917 |
+| Final | 0.9640 |
 
-Confusion Matrix, Zeilen = True Label, Spalten = Prediction:
+Confusion Matrix, Zeilen = True Label, Spalten = Prediction. Reihenfolge:
+Erste, Zweite, Fraeszustand, Final.
 
 ```text
-[80, 2, 2, 8]
-[1, 214, 0, 3]
+[80, 8, 2, 2]
+[0, 191, 0, 10]
 [1, 0, 179, 0]
-[0, 10, 0, 191]
+[1, 3, 0, 214]
 ```
 
 ### DINOv3 frozen + Linear Head
@@ -99,17 +100,18 @@ Klassen-F1:
 | Klasse | F1 |
 | --- | ---: |
 | Erste | 0.929730 |
-| Final | 0.928074 |
-| Fraeszustand | 0.994444 |
 | Zweite | 0.906404 |
+| Fraeszustand | 0.994444 |
+| Final | 0.928074 |
 
-Confusion Matrix, Zeilen = True Label, Spalten = Prediction:
+Confusion Matrix, Zeilen = True Label, Spalten = Prediction. Reihenfolge:
+Erste, Zweite, Fraeszustand, Final.
 
 ```text
-[86, 2, 1, 3]
-[0, 200, 0, 18]
+[86, 3, 1, 2]
+[6, 184, 0, 11]
 [1, 0, 179, 0]
-[6, 11, 0, 184]
+[0, 18, 0, 200]
 ```
 
 ### DeiT-Tiny from scratch
@@ -126,17 +128,18 @@ Klassen-F1:
 | Klasse | F1 |
 | --- | ---: |
 | Erste | 0.4530 |
-| Final | 0.7373 |
-| Fraeszustand | 0.7003 |
 | Zweite | 0.6192 |
+| Fraeszustand | 0.7003 |
+| Final | 0.7373 |
 
-Confusion Matrix, Zeilen = True Label, Spalten = Prediction:
+Confusion Matrix, Zeilen = True Label, Spalten = Prediction. Reihenfolge:
+Erste, Zweite, Fraeszustand, Final.
 
 ```text
-[41, 7, 8, 36]
-[9, 153, 13, 43]
-[21, 11, 118, 30]
-[18, 26, 18, 139]
+[41, 36, 8, 7]
+[18, 139, 18, 26]
+[21, 30, 118, 11]
+[9, 43, 13, 153]
 ```
 
 Zum Trainingsverlauf sind 92 Epochen protokolliert. Der beste Checkpoint
@@ -159,17 +162,18 @@ Klassen-F1:
 | Klasse | F1 |
 | --- | ---: |
 | Erste | 0.956044 |
-| Final | 0.934579 |
-| Fraeszustand | 0.994475 |
 | Zweite | 0.921951 |
+| Fraeszustand | 0.994475 |
+| Final | 0.934579 |
 
-Confusion Matrix, Zeilen = True Label, Spalten = Prediction:
+Confusion Matrix, Zeilen = True Label, Spalten = Prediction. Reihenfolge:
+Erste, Zweite, Fraeszustand, Final.
 
 ```text
-[87, 1, 2, 2]
-[0, 200, 0, 18]
+[87, 2, 2, 1]
+[3, 189, 0, 9]
 [0, 0, 180, 0]
-[3, 9, 0, 189]
+[0, 18, 0, 200]
 ```
 
 ## Lokale Region-Modelle
@@ -193,17 +197,18 @@ Klassen-F1:
 | Klasse | F1 |
 | --- | ---: |
 | Erste | 0.7000 |
-| Final | 0.8276 |
-| Fraeszustand | 0.8333 |
 | Zweite | 0.8000 |
+| Fraeszustand | 0.8333 |
+| Final | 0.8276 |
 
-Confusion Matrix, Zeilen = True Label, Spalten = Prediction:
+Confusion Matrix, Zeilen = True Label, Spalten = Prediction. Reihenfolge:
+Erste, Zweite, Fraeszustand, Final.
 
 ```text
-[7, 0, 0, 1]
-[1, 12, 0, 4]
+[7, 1, 0, 0]
+[2, 14, 0, 0]
 [2, 0, 5, 0]
-[2, 0, 0, 14]
+[1, 4, 0, 12]
 ```
 
 ### DINOv3 Region-Head 5 Klassen
@@ -225,7 +230,8 @@ Klassen-F1:
 | Final | 0.6667 |
 | `Nicht_bewertbar` | 0.4000 |
 
-Confusion Matrix, Zeilen = True Label, Spalten = Prediction:
+Confusion Matrix, Zeilen = True Label, Spalten = Prediction. Reihenfolge:
+Erste, Zweite, Fraeszustand, Final, Nicht_bewertbar.
 
 ```text
 [6, 1, 0, 0, 1]
