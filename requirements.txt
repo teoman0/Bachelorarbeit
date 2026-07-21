@@ -1,29 +1,21 @@
-# Initial research environment.
-# Exact versions should be frozen in a lock file after the dataset and first
-# executable experiments are defined.
+# Direct runtime dependencies verified against the tracked import graph and
+# the recorded Python 3.12.13 experiment environment.
+#
+# Install the pinned public versions torch 2.11.0 and torchvision 0.26.0 first
+# with the CPU/CUDA wheel selected for the target system at
+# https://pytorch.org/get-started/locally/. The recorded GPU environment used
+# the local builds 2.11.0+cu128 / 0.26.0+cu128; those builds satisfy the public
+# pins below without imposing one compute-platform wheel on other systems.
 
-numpy
-pandas
-scikit-learn
-Pillow
-opencv-python
-matplotlib
-seaborn
-PyYAML
-tqdm
+numpy==2.4.6
+pandas==3.0.3
+Pillow==12.2.0
+matplotlib==3.11.0
+PyYAML==6.0.3
 
-# Deep learning stack. Install a CUDA-specific torch build if required.
-torch
-torchvision
+torch==2.11.0
+torchvision==0.26.0
 
-# Planned model families.
-ultralytics
-timm>=1.0.20
-transformers>=4.56.0
-accelerate
-
-# Development and notebooks.
-jupyter
-ipykernel
-pytest
-ruff
+ultralytics==8.4.90
+timm==1.0.28
+transformers==5.12.1

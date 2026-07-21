@@ -41,6 +41,17 @@ weights/
 *.safetensors
 *.onnx
 
+# Local framework caches and downloaded base models
+.cache/huggingface/
+.cache/torch/
+huggingface_cache/
+torch_cache/
+model_cache/
+model_downloads/
+downloaded_models/
+feature_cache/
+feature_caches/
+
 # Experiment outputs
 outputs/*
 !outputs/.gitkeep
@@ -49,6 +60,10 @@ wandb/
 mlruns/
 lightning_logs/
 tensorboard/
+
+# Generated arrays, predictions, and metrics belong in data/cache/ or outputs/.
+# Their extensions and filenames remain visible elsewhere so that small test
+# fixtures and curated tables can still be versioned deliberately.
 
 # Large or generated archives
 *.zip
