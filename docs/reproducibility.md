@@ -43,18 +43,27 @@ Windows-Umgebung kann wie folgt angelegt werden:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 Dabei muss `python` auf den installierten Python-3.12-Interpreter verweisen.
 
-`requirements.txt` beschreibt die benötigten Bibliotheksfamilien, ist aber
-kein vollständig gepinnter Lockfile. Exakte Paketstände eines Laufs sind den
-lokalen `run_metadata.json`- beziehungsweise Framework-Metadaten zu entnehmen.
-Für GPU-Läufe muss eine zur lokalen NVIDIA-Umgebung passende CUDA-fähige
-PyTorch-Distribution nach der offiziellen PyTorch-Installationsauswahl
-installiert werden. Eine konkrete CUDA-Wheel-Version wird hier nicht
-festgeschrieben, da sie von Treiber und Zielsystem abhängt.
+`requirements.txt` pinnt die direkten Laufzeitabhängigkeiten auf die im
+finalen Workflow geprüften öffentlichen Paketversionen. Es ist kein
+vollständiger Lockfile transitiver Abhängigkeiten. Exakte lokale Build-Suffixe
+und weitere Paketstände eines Laufs sind den `run_metadata.json`- oder
+Framework-Metadaten zu entnehmen. Vor den übrigen Requirements müssen die
+gepinnten öffentlichen Versionen `torch 2.11.0` und `torchvision 0.26.0` über
+den zur CPU-/CUDA-Zielumgebung passenden Index der offiziellen
+PyTorch-Installationsauswahl installiert werden. Der dokumentierte GPU-Stand
+war `torch 2.11.0+cu128` mit `torchvision 0.26.0+cu128`; eine konkrete
+CUDA-Wheel-Variante wird für andere Zielsysteme nicht vorgeschrieben. Lokale
+Build-Suffixe wie `+cu128` erfüllen die öffentlichen Versionspins und werden
+durch den anschließenden Requirements-Aufruf nicht ersetzt. Danach werden die
+übrigen direkten Abhängigkeiten installiert:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
 
 DINOv3-Skripte blockieren Downloads standardmäßig. Auf einem neuen System
 kann der vortrainierte Backbone nach Prüfung von Lizenz und Netzwerkzugriff

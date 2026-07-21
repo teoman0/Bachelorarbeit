@@ -1,170 +1,102 @@
 # Modell- und Lizenzdokumentation
 
-Stand: 2026-06-16
+Stand und Abrufdatum der verlinkten Upstream-Quellen: 2026-07-21.
 
-Diese Datei dokumentiert die Lizenzlage der geplanten Modellgruppen. Sie ersetzt keine Rechtsberatung, dient aber als reproduzierbare Arbeitsnotiz fuer die Bachelorarbeit. Vor jedem Experiment muss die konkret verwendete Paketversion, Modellvariante und Gewichtsquelle ergaenzt werden.
+Diese Übersicht dokumentiert die tatsächlich verwendeten Modell- und
+Softwarekomponenten. Sie ist keine Rechtsberatung. Vor einer Veröffentlichung
+von Gewichten, einer Weitergabe des Codes oder einem praktischen Einsatz sind
+die dann gültigen Originalbedingungen erneut zu prüfen. Für den eigenen Code
+dieses Repositorys ist derzeit keine separate Nutzungslizenz ausgewiesen.
 
-## Kurzuebersicht
+## Modelle und zentrale Frameworks
 
-| Modellgruppe | Voraussichtliche Quelle | Lizenzstatus | Konsequenz fuer dieses Repo |
-| --- | --- | --- | --- |
-| YOLOv11-cls | Ultralytics `ultralytics` | AGPL-3.0 oder kommerzielle Ultralytics Enterprise License | Fuer wissenschaftliche Experimente moeglich, Lizenzhinweise dokumentieren; keine Gewichte ins Repo |
-| DINOv3 | Meta / facebookresearch DINOv3 | DINOv3 License, eigene Meta-Lizenz | Nicht als unkritischen Open-Source-Vergleich behandeln; konkrete Nutzungsbedingungen dokumentieren |
-| DeiT-Tiny from scratch | facebookresearch/deit bzw. `timm` | Code Apache-2.0; `pretrained=False` vermeidet externe Gewichte | Geplanter lizenzbewusster ViT-Kontrollvergleich |
-| ViT ueber `timm` | huggingface/pytorch-image-models | Code Apache-2.0; Gewichte koennen abweichen | Fuer jedes konkrete `timm`-Modell die Gewichtsquelle separat dokumentieren; fuer den geplanten DeiT-Tiny-Lauf keine externen Gewichte nutzen |
+| Komponente | Konkrete Verwendung | Version | Code-Lizenz | Modellgewichte | Offizielle Quellen |
+| --- | --- | --- | --- | --- | --- |
+| Ultralytics YOLO | `yolo11n-cls` als vortrainierte globale Baseline | `ultralytics 8.4.90` | AGPL-3.0; Ultralytics bietet alternativ eigene Enterprise-Bedingungen an | Ultralytics ordnet auch seine trainierten Modelle standardmäßig der AGPL-3.0 zu; eine abweichende Enterprise-Vereinbarung wurde für dieses Repository nicht dokumentiert | [Ultralytics-Lizenzseite](https://www.ultralytics.com/license), [Upstream-Lizenz](https://github.com/ultralytics/ultralytics/blob/main/LICENSE) |
+| DINOv3 ViT-B/16 | `facebook/dinov3-vitb16-pretrain-lvd1689m` für Frozen Head, Partial Fine-Tuning und Region-Heads | Modellstand aus dem lokalen Hugging-Face-Cache; geladen mit `transformers 5.12.1` | Eigene DINOv3 License für die von Meta bereitgestellten DINO-Materialien | Die DINOv3 License umfasst ausdrücklich auch trainierte Gewichte; der Modellzugang ist auf Hugging Face an eine Zugangsvereinbarung gebunden | [DINOv3 License](https://github.com/facebookresearch/dinov3/blob/main/LICENSE.md), [offizielle Modellkarte](https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m), [Repository](https://github.com/facebookresearch/dinov3) |
+| Hugging Face Transformers | Laden und Ausführen des DINOv3-Backbones | `5.12.1` | Apache-2.0 | Keine eigenen Gewichte; die geladene DINOv3-Datei behält ihre separate Lizenz | [Upstream-Lizenz](https://github.com/huggingface/transformers/blob/main/LICENSE) |
+| timm | Implementierung von `deit_tiny_patch16_224` | `1.0.28` | Apache-2.0 | Im Experiment wurde `pretrained=false` verwendet; es wurden keine timm- oder DeiT-Basisgewichte geladen | [timm-Lizenz](https://github.com/huggingface/pytorch-image-models/blob/main/LICENSE), [timm-Repository](https://github.com/huggingface/pytorch-image-models) |
+| DeiT | Architektur- und Publikationsbezug des from-scratch-Kontrollmodells; die konkrete Implementierung stammt aus timm | keine separate Laufzeitkomponente | Das offizielle DeiT-Repository steht unter Apache-2.0 | Keine externen DeiT-Gewichte verwendet | [offizielle DeiT-Lizenz](https://github.com/facebookresearch/deit/blob/main/LICENSE), [DeiT-Repository](https://github.com/facebookresearch/deit) |
+| PyTorch | Trainings- und Inferenzlaufzeit | `2.11.0+cu128` im dokumentierten GPU-Stand | BSD-3-Clause | Keine vom PyTorch-Projekt bereitgestellten Modellgewichte verwendet | [PyTorch-Lizenz](https://github.com/pytorch/pytorch/blob/main/LICENSE) |
+| torchvision | Laufzeitabhängigkeit des Bildmodell-Stacks | `0.26.0+cu128` im dokumentierten GPU-Stand | BSD-3-Clause | Keine torchvision-Gewichte verwendet | [torchvision-Lizenz](https://github.com/pytorch/vision/blob/main/LICENSE) |
 
-## YOLOv11-cls / Ultralytics
+Die externen YOLO- und DINOv3-Basisgewichte sowie alle daraus erzeugten
+Projektcheckpoints sind nicht Bestandteil des Repositorys. Bei Ultralytics
+sind insbesondere die AGPL-Pflichten und die angebotene Enterprise-Alternative
+vor einer nicht vollständig offenen Weiterverwendung zu prüfen. Bei DINOv3
+gelten eigene Vertragsbedingungen für Code und Gewichte; Weitergabe,
+Publikationshinweise und praktische Nutzung müssen gegen die jeweils aktuelle
+DINOv3 License geprüft werden.
 
-Quelle:
+## Weitere direkte Laufzeitabhängigkeiten
 
-- https://github.com/ultralytics/ultralytics
-- https://docs.ultralytics.com/
+| Paket | Verwendung | Verwendete Version | Lizenz | Offizielle Quelle |
+| --- | --- | ---: | --- | --- |
+| NumPy | numerische Verarbeitung und Prediction-Tabellen | `2.4.6` | BSD-3-Clause mit gebündelten Drittanbieterhinweisen | [NumPy-Lizenz](https://github.com/numpy/numpy/blob/main/LICENSE.txt) |
+| pandas | CSV-basierte Evaluation | `3.0.3` | BSD-3-Clause | [pandas-Lizenz](https://github.com/pandas-dev/pandas/blob/main/LICENSE) |
+| Pillow | Bilddekodierung, EXIF-Transpose, Crops und Visualisierungen | `12.2.0` | MIT-CMU | [Pillow-Lizenz](https://github.com/python-pillow/Pillow/blob/main/LICENSE) |
+| Matplotlib | Abbildungen des Datensatzaudits | `3.11.0` | Matplotlib License | [Matplotlib-Lizenz](https://github.com/matplotlib/matplotlib/blob/main/LICENSE/LICENSE) |
+| PyYAML | Laden versionierter Experimentkonfigurationen | `6.0.3` | MIT | [PyYAML-Lizenz](https://github.com/yaml/pyyaml/blob/main/LICENSE) |
 
-Notizen:
+Die angegebenen Versionen stammen aus der für die finalen Workflows
+verwendeten lokalen Python-3.12.13-Umgebung und den gespeicherten
+Run-Metadaten. Abhängigkeiten, die diese Pakete transitiv installieren,
+unterliegen zusätzlich ihren eigenen Lizenztexten.
 
-- Das Ultralytics-Repository ist als AGPL-3.0 lizenziert.
-- Ultralytics weist zusaetzlich auf eine Enterprise License fuer kommerzielle oder produktionsnahe Nutzung hin.
-- Fuer diese Bachelorarbeit ist wichtig, die verwendete Paketversion und Modellvariante zu dokumentieren.
-- Lokale Runs, Checkpoints, heruntergeladene Gewichte und `runs/`-Ordner duerfen nicht in GitHub eingecheckt werden.
+Diese Übersicht führt die vom eigenen finalen Code direkt verwendeten Pakete
+und die für die dokumentierten Modell-CLIs erforderlichen zentralen
+Frameworks. Transitive Abhängigkeiten werden nicht einzeln aufgelistet; ihre
+Lizenztexte bleiben bei einer Weitergabe der installierten Laufzeitumgebung
+zusätzlich zu beachten.
 
-Konkrete Nutzung:
+## Verbleibende Unsicherheiten
 
-```text
-Experiment-ID: yolo_rectangle_detection_pilot_v1
-Modellgruppe: YOLO Detection / rechteckbasierte lokale Pilotanalyse
-Modellname: yolo11n.pt
-Paket/Repository: ultralytics
-Paketversion oder Commit: ultralytics 8.4.90 im ersten lokalen Lauf vom 2026-07-08
-Gewichtsquelle: automatischer Download durch Ultralytics beim ersten Laden von yolo11n.pt
-Download-Datum: 2026-07-08
-Code-Lizenz: AGPL-3.0 laut Ultralytics-Repository
-Gewichte-Lizenz: Ultralytics/YOLO-Modellbedingungen laut Quelle pruefen; nicht ins Repo einchecken
-Pretraining-Datensatz: COCO Detection fuer das vortrainierte Detection-Modell
-Zitationshinweis: Ultralytics YOLO Dokumentation/Repository
-Lokaler Gewichtepfad ausserhalb des Repos: Ultralytics-/Torch-Cache oder lokaler Gewichteordner ausserhalb von Git
-Bemerkungen: Pilotlauf auf CVAT-Rechtecken aus manual_all_yolo; nicht Teil des
-globalen YOLOv11-cls-Hauptvergleichs und keine pixelgenaue Segmentierung.
-```
+Die exakten Upstream-Revisionen, Datei-Hashes und ursprünglichen
+Downloadzeitpunkte der lokal verwendeten YOLO- und DINOv3-Basisgewichte sind
+nicht im versionierten Repository festgehalten. Da auch die Gewichtsdateien
+nicht enthalten sind, können diese Angaben aus einem frischen Clone nicht
+nachträglich verifiziert werden. Vor einer erneuten Beschaffung oder
+Weitergabe sind deshalb Modellkarte, Lizenzfassung und Artefakt-Metadaten am
+konkreten Download erneut zu dokumentieren.
 
-## DINOv3
+Ebenso ist nicht geklärt, unter welchen Bedingungen der eigene Repository-Code
+weitergegeben werden darf. Die aufgeführten Drittanbieter-Lizenzen erteilen
+keine Lizenz an den selbst erstellten Projektbestand oder an den verwendeten
+Bilddatensatz.
 
-Quelle:
+## Relevanz für die Bachelorarbeit
 
-- https://github.com/facebookresearch/dinov3
-- https://raw.githubusercontent.com/facebookresearch/dinov3/main/LICENSE.md
+Für die wissenschaftliche Arbeit sind insbesondere folgende Angaben
+erforderlich:
 
-Notizen:
+- exakter Modellname und Implementierungsquelle;
+- Pretraining-Status und Herkunft externer Basisgewichte;
+- verwendete Paketversionen und Abrufstand;
+- korrekte Zitation der Modellpublikationen und Upstream-Projekte;
+- klare Kennzeichnung, dass weder Basisgewichte noch Projektcheckpoints im
+  Repository veröffentlicht werden.
 
-- DINOv3-Code und Modellgewichte stehen laut Repository unter der DINOv3 License.
-- Die DINOv3 License ist eine eigene Meta-Lizenz und sollte nicht automatisch als unkritische Open-Source-Lizenz behandelt werden.
-- Fuer Experimente muss dokumentiert werden:
-  - exakter Modellname,
-  - Quelle der Gewichte,
-  - Zeitpunkt des Downloads,
-  - akzeptierte Lizenzbedingungen,
-  - lokale Speicherposition ausserhalb des Git-Repositories.
-- DINOv3 ist deshalb nicht die Modellgruppe fuer den lizenzbewussten
-  ViT-Kontrollvergleich, sondern eine eigene zu untersuchende Modellgruppe.
+Diese Angaben sichern methodische Nachvollziehbarkeit und ordnen den Einsatz
+fremder Komponenten ein. Sie ersetzen nicht die Prüfung konkreter
+Weitergaberechte.
 
-Konkrete Nutzung:
+## Relevanz für eine praktische Weiterverwendung
 
-```text
-Experiment-ID: dinov3_patch_smoke_test
-Modellgruppe: DINOv3 patchbasiert
-Modellname: facebook/dinov3-vits16-pretrain-lvd1689m
-Paket/Repository: Hugging Face transformers
-Paketversion oder Commit: transformers 5.12.1, torch 2.12.1+cpu
-Gewichtsquelle: https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m
-Download-Datum: 2026-06-18
-Code-Lizenz: DINOv3 License laut Modellkarte/Repository
-Gewichte-Lizenz: DINOv3 License laut Modellkarte/Repository
-Pretraining-Datensatz: LVD-1689M laut Modellkarte
-Zitationshinweis: DINOv3, arXiv:2508.10104
-Lokaler Gewichtepfad ausserhalb des Repos: Hugging-Face-Cache ausserhalb des Repositories, z. B. `%USERPROFILE%\.cache\huggingface\hub\models--facebook--dinov3-vits16-pretrain-lvd1689m`
-Bemerkungen: Nur technischer Smoke-Test ohne Training, Labels oder Bewertung.
-```
+Vor einer späteren Veröffentlichung, Bereitstellung als Dienst, Integration in
+ein Produkt oder Weitergabe von Gewichten sind zusätzlich mindestens folgende
+Punkte rechtlich zu prüfen:
 
-```text
-Experiment-ID: dinov3_bmw25_prototype_heatmaps
-Modellgruppe: DINOv3 patchbasiert
-Modellname: facebook/dinov3-vits16-pretrain-lvd1689m
-Paket/Repository: Hugging Face transformers
-Paketversion oder Commit: siehe requirements-dinov3-prototype.txt
-Gewichtsquelle: https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m
-Download-Datum: 2026-06-18
-Code-Lizenz: DINOv3 License laut Modellkarte/Repository
-Gewichte-Lizenz: DINOv3 License laut Modellkarte/Repository
-Pretraining-Datensatz: LVD-1689M laut Modellkarte
-Zitationshinweis: DINOv3, arXiv:2508.10104
-Lokaler Gewichtepfad ausserhalb des Repos: Hugging-Face-Cache ausserhalb des Repositories
-Bemerkungen: Qualitative Prototyp-Heatmaps ohne Training, ohne Pixelmasken und ohne finale Testset-Bewertung.
-```
+- ob die konkrete Nutzung die AGPL-3.0-Bedingungen von Ultralytics erfüllt oder
+  eine gesonderte Vereinbarung erfordert;
+- welche Fassung der DINOv3 License und welche Zugangsbedingungen für Code,
+  Basisgewichte und abgeleitete Checkpoints gelten;
+- ob Lizenztexte, Copyright-Hinweise, NOTICE-Dateien oder Quellcode bei einer
+  Distribution mitgeliefert werden müssen;
+- ob Rechte am Bilddatensatz, an Annotationen und an erzeugten Checkpoints eine
+  Veröffentlichung erlauben;
+- ob die noch ungeklärte Lizenzierung des eigenen Repository-Codes eine
+  Weitergabe überhaupt gestattet.
 
-```text
-Experiment-ID: weak_segmentation_feasibility_manual_v1
-Modellgruppe: DINOv3 patchbasiert / qualitative lokale Klassifikationskarten
-Modellname: facebook/dinov3-vits16-pretrain-lvd1689m
-Paket/Repository: Hugging Face transformers
-Paketversion oder Commit: siehe summary.json des lokalen Laufs
-Gewichtsquelle: https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m
-Download-Datum: bereits lokal gecacht, Lauf am 2026-07-08 mit local_files_only=true
-Code-Lizenz: DINOv3 License laut Modellkarte/Repository
-Gewichte-Lizenz: DINOv3 License laut Modellkarte/Repository
-Pretraining-Datensatz: LVD-1689M laut Modellkarte
-Zitationshinweis: DINOv3, arXiv:2508.10104
-Lokaler Gewichtepfad ausserhalb des Repos: Hugging-Face-Cache ausserhalb des Repositories
-Bemerkungen: Frozen Feature Extractor, leave-one-image-out nearest-prototype,
-keine Gewichtsanpassung, kein echtes Segmentierungsmodell, Rechtecke nur als schwache Masken.
-```
-
-## DeiT-Tiny from scratch
-
-Quelle:
-
-- https://github.com/facebookresearch/deit
-- https://github.com/huggingface/pytorch-image-models
-
-Notizen:
-
-- Das offizielle DeiT-Repository ist unter Apache-2.0 veroeffentlicht.
-- Fuer die geplante Modellmatrix ist bevorzugt `deit_tiny_patch16_224` vorgesehen.
-- Der Lauf soll mit `pretrained=False` erfolgen, um externe Modellgewichte und deren separate Lizenzfragen zu vermeiden.
-- DeiT-Tiny from scratch ist als Architekturkontrolle bzw. ViT-from-scratch-Untergrenze geplant, nicht als direkter Leistungsfavorit gegenueber DINOv3.
-- Vor dem Experiment muessen die konkrete Implementierungsquelle, `timm`-Version und Zitationshinweise dokumentiert werden.
-
-## ViT ueber timm
-
-Quelle:
-
-- https://github.com/huggingface/pytorch-image-models
-- https://huggingface.co/docs/timm
-
-Notizen:
-
-- Der `timm`-Code ist Apache-2.0 lizenziert.
-- Die Lizenz oder Nutzbarkeit einzelner vortrainierter Gewichte kann von der Gewichtsquelle und dem Pretraining-Datensatz abhaengen.
-- Fuer jedes verwendete Modell muss dokumentiert werden:
-  - `timm`-Modellname,
-  - `timm`-Version,
-  - Quelle der Gewichte,
-  - Lizenz der Gewichte,
-  - Pretraining-Datensatz, soweit bekannt,
-  - Zitation.
-
-## Template fuer konkrete Experimente
-
-```text
-Experiment-ID:
-Modellgruppe:
-Modellname:
-Paket/Repository:
-Paketversion oder Commit:
-Gewichtsquelle:
-Download-Datum:
-Code-Lizenz:
-Gewichte-Lizenz:
-Pretraining-Datensatz:
-Zitationshinweis:
-Lokaler Gewichtepfad ausserhalb des Repos:
-Bemerkungen:
-```
+Eine pauschale industrielle oder kommerzielle Nutzbarkeit wird daraus nicht
+abgeleitet. Bei Unklarheit ist vor dem Einsatz eine rechtliche Prüfung
+erforderlich.
