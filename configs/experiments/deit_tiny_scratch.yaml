@@ -7,6 +7,7 @@ image_size: [224, 224]
 batch_size: 16
 batch_size_fallback: 8
 epochs: 150
+patience: 25
 seed: 42
 optimizer: "adamw"
 learning_rate: 0.0005

@@ -122,6 +122,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-training", action="store_true", help="Start the real from-scratch training run.")
     parser.add_argument("--batch-override", type=int, default=None)
     parser.add_argument("--epochs-override", type=int, default=None)
+    parser.add_argument("--patience-override", type=int, default=None)
     parser.add_argument("--max-smoke-samples", type=int, default=None)
     args = parser.parse_args()
 
@@ -134,6 +135,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--batch-override must be at least 1")
     if args.epochs_override is not None and args.epochs_override < 1:
         parser.error("--epochs-override must be at least 1")
+    if args.patience_override is not None and args.patience_override < 1:
+        parser.error("--patience-override must be at least 1")
     if args.max_smoke_samples is not None and args.max_smoke_samples < 1:
         parser.error("--max-smoke-samples must be at least 1")
     return args
@@ -187,6 +190,10 @@ def effective_batch_size(context: DeiTRunContext, args: argparse.Namespace) -> i
 
 def effective_epochs(context: DeiTRunContext, args: argparse.Namespace) -> int:
     return int(args.epochs_override or context.config.get("epochs", 150))
+
+
+def effective_patience(context: DeiTRunContext, args: argparse.Namespace) -> int:
+    return int(getattr(args, "patience_override", None) or context.config.get("patience", 25))
 
 
 def max_smoke_samples(context: DeiTRunContext, args: argparse.Namespace) -> int:
@@ -286,6 +293,7 @@ def base_metadata(context: DeiTRunContext, args: argparse.Namespace, mode: str) 
         "batch_size": effective_batch_size(context, args),
         "batch_size_fallback": config.get("batch_size_fallback"),
         "epochs": effective_epochs(context, args),
+        "patience": effective_patience(context, args),
         "optimizer": config.get("optimizer"),
         "learning_rate": config.get("learning_rate"),
         "weight_decay": config.get("weight_decay"),
@@ -468,6 +476,16 @@ def write_epoch_metrics(path: Path, rows: list[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
+def write_metric_csv(path: Path, metrics: dict[str, Any], best_epoch: int) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["metric", "value"])
+        for key in ("num_rows", "accuracy", "balanced_accuracy", "macro_f1"):
+            writer.writerow([key, metrics[key]])
+        writer.writerow(["best_epoch", best_epoch])
+
+
 def run_dry_run(context: DeiTRunContext, args: argparse.Namespace) -> dict[str, Any]:
     metadata_path = write_metadata(
         context,
@@ -583,8 +601,14 @@ def run_training(context: DeiTRunContext, args: argparse.Namespace) -> dict[str,
     train_loader = make_data_loader(context.train_records, context, batch_size=effective_batch_size(context, args), shuffle=True)
     val_loader = make_data_loader(context.val_records, context, batch_size=effective_batch_size(context, args), shuffle=False)
     epochs = effective_epochs(context, args)
+    patience = effective_patience(context, args)
     best_macro_f1 = -1.0
     best_epoch = 0
+    best_metrics: dict[str, Any] | None = None
+    best_per_class: list[dict[str, Any]] | None = None
+    best_confusion: list[list[int]] | None = None
+    epochs_without_improvement = 0
+    early_stopped = False
     epoch_rows: list[dict[str, Any]] = []
     labels = [context.index_to_class[index] for index in sorted(context.index_to_class)]
     started = time.perf_counter()
@@ -618,11 +642,13 @@ def run_training(context: DeiTRunContext, args: argparse.Namespace) -> dict[str,
             device=device,
         )
         train_loss = train_loss_sum / train_count if train_count else 0.0
-        epoch_row = {"epoch": epoch, "train_loss": train_loss, **val_metrics}
-        epoch_rows.append(epoch_row)
         if float(val_metrics["macro_f1"]) > best_macro_f1:
             best_macro_f1 = float(val_metrics["macro_f1"])
             best_epoch = epoch
+            best_metrics = val_metrics
+            best_per_class = per_class
+            best_confusion = confusion
+            epochs_without_improvement = 0
             save_checkpoint(
                 context.output_dir / "checkpoints" / "best_model.pt",
                 model,
@@ -631,49 +657,81 @@ def run_training(context: DeiTRunContext, args: argparse.Namespace) -> dict[str,
                 val_metrics,
             )
             write_predictions(context.output_dir / "predictions_val.csv", prediction_rows, context)
-            write_json(
-                context.output_dir / "metrics_val.json",
-                {
-                    "overall_metrics": val_metrics,
-                    "per_class_metrics": per_class,
-                    "confusion_matrix": {
-                        "labels": labels,
-                        "rows_are_true_labels": True,
-                        "values": confusion,
-                    },
-                    "best_epoch": best_epoch,
-                    "checkpoint_metric": "macro_f1",
+            metrics_payload = {
+                "overall_metrics": val_metrics,
+                "per_class_metrics": per_class,
+                "confusion_matrix": {
+                    "labels": labels,
+                    "rows_are_true_labels": True,
+                    "values": confusion,
                 },
-            )
+                "best_epoch": best_epoch,
+                "checkpoint_metric": "macro_f1",
+                "patience": patience,
+            }
+            write_json(context.output_dir / "metrics_val.json", metrics_payload)
+            write_json(context.output_dir / "val_metrics.json", metrics_payload)
+            write_metric_csv(context.output_dir / "val_metrics.csv", val_metrics, best_epoch)
             write_confusion(context.output_dir / "confusion_matrix_val.csv", labels, confusion)
+        else:
+            epochs_without_improvement += 1
 
-    save_checkpoint(
-        context.output_dir / "checkpoints" / "last_model.pt",
-        model,
-        context,
-        epochs,
-        epoch_rows[-1],
-    )
+        epoch_row = {
+            "epoch": epoch,
+            "train_loss": train_loss,
+            **val_metrics,
+            "epochs_without_improvement": epochs_without_improvement,
+        }
+        epoch_rows.append(epoch_row)
+        write_epoch_metrics(context.output_dir / "training_metrics.csv", epoch_rows)
+        write_epoch_metrics(context.output_dir / "training_log.csv", epoch_rows)
+        save_checkpoint(
+            context.output_dir / "checkpoints" / "last_model.pt",
+            model,
+            context,
+            epoch,
+            epoch_row,
+        )
+        if epochs_without_improvement >= patience:
+            early_stopped = True
+            break
+
     write_epoch_metrics(context.output_dir / "training_metrics.csv", epoch_rows)
+    write_epoch_metrics(context.output_dir / "training_log.csv", epoch_rows)
     extra = {
         "training_result": {
             "model_variant": model_variant(context),
             "device": str(device),
-            "epochs_completed": epochs,
+            "epochs_requested": epochs,
+            "epochs_completed": int(epoch_rows[-1]["epoch"]),
+            "patience": patience,
+            "early_stopped": early_stopped,
             "best_epoch": best_epoch,
             "best_macro_f1": best_macro_f1,
+            "best_metrics": best_metrics,
+            "best_per_class_metrics": best_per_class,
+            "best_confusion_matrix": {
+                "labels": labels,
+                "rows_are_true_labels": True,
+                "values": best_confusion,
+            },
             "runtime_seconds": round(time.perf_counter() - started, 3),
             "local_outputs": {
                 "best_checkpoint": relative_to_repo(context.output_dir / "checkpoints" / "best_model.pt"),
                 "last_checkpoint": relative_to_repo(context.output_dir / "checkpoints" / "last_model.pt"),
+                "training_log": relative_to_repo(context.output_dir / "training_log.csv"),
+                "training_metrics": relative_to_repo(context.output_dir / "training_metrics.csv"),
                 "val_predictions": relative_to_repo(context.output_dir / "predictions_val.csv"),
-                "val_metrics": relative_to_repo(context.output_dir / "metrics_val.json"),
+                "val_metrics": relative_to_repo(context.output_dir / "val_metrics.json"),
+                "confusion_matrix": relative_to_repo(context.output_dir / "confusion_matrix_val.csv"),
             },
             "test_used": False,
         }
     }
     metadata_path = write_metadata(context, args, "training", extra)
-    return {"metadata": str(metadata_path), **extra["training_result"]}
+    run_metadata_path = context.output_dir / "run_metadata.json"
+    run_metadata_path.write_text(metadata_path.read_text(encoding="utf-8"), encoding="utf-8")
+    return {"metadata": str(metadata_path), "run_metadata": str(run_metadata_path), **extra["training_result"]}
 
 
 def save_checkpoint(
