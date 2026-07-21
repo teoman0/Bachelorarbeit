@@ -33,7 +33,8 @@ from bachelorarbeit.training.global_training_setup import (
 )
 
 
-SPLITS = ("train", "val", "test")
+DEVELOPMENT_SPLITS = ("train", "val")
+FINAL_TEST_SPLIT = "test"
 
 
 def yolo_dataset_dir(config: dict[str, Any]) -> Path:
@@ -98,24 +99,47 @@ def create_hardlink(source: Path, target: Path) -> None:
     os.link(source, target)
 
 
-def prepare_yolo_dataset(run: PreparedRun, link_method: str) -> dict[str, Any]:
+def selected_yolo_splits(include_final_test: bool) -> tuple[str, ...]:
+    return DEVELOPMENT_SPLITS + ((FINAL_TEST_SPLIT,) if include_final_test else ())
+
+
+def assert_no_materialized_test_split(dataset_dir: Path) -> None:
+    test_dir = dataset_dir / FINAL_TEST_SPLIT
+    if test_dir.is_dir() and any(path.is_file() for path in test_dir.rglob("*")):
+        raise RuntimeError(
+            "The prepared YOLO dataset contains a materialized test split. "
+            "Training and smoke-test workflows require a train/val-only dataset view."
+        )
+
+
+def prepare_yolo_dataset(
+    run: PreparedRun,
+    link_method: str,
+    *,
+    include_final_test: bool = False,
+) -> dict[str, Any]:
     if link_method not in {"auto", "symlink", "hardlink"}:
         raise ValueError("--link-method must be auto, symlink, or hardlink")
 
     records = read_split_manifest(run.manifest_path)
+    selected_splits = selected_yolo_splits(include_final_test)
     dataset_dir = yolo_dataset_dir(run.config)
+    if not include_final_test:
+        assert_no_materialized_test_split(dataset_dir)
     class_to_index = run.class_to_index
     method_counts: Counter[str] = Counter()
     split_class_counts: dict[str, Counter[str]] = {
-        split: Counter() for split in SPLITS
+        split: Counter() for split in selected_splits
     }
     split_file_counts: Counter[str] = Counter()
 
     for label in class_to_index:
-        for split in SPLITS:
+        for split in selected_splits:
             (dataset_dir / split / label).mkdir(parents=True, exist_ok=True)
 
     for record in records:
+        if record.split not in selected_splits:
+            continue
         source = resolve_record_path(run.dataset_root, record)
         target = dataset_dir / record.split / record.label / target_name(record)
         used_method = ensure_link(source, target, link_method)
@@ -139,10 +163,13 @@ def prepare_yolo_dataset(run: PreparedRun, link_method: str) -> dict[str, Any]:
         "prepared_class_counts": {
             split: dict(sorted(counts.items())) for split, counts in split_class_counts.items()
         },
+        "prepared_splits": list(selected_splits),
+        "final_test_materialized": include_final_test,
         "test_usage_note": (
-            "The test split is materialized for final evaluation only. It must not be "
-            "used for training, validation, early stopping, checkpoint selection, or "
-            "hyperparameter decisions."
+            "The test split is materialized only when --allow-final-test is supplied. "
+            "It must never be used for training, validation, checkpoint selection, or decisions."
+            if include_final_test
+            else "Only train and val are materialized; test remains untouched."
         ),
     }
     path = local_summary_path(dataset_dir)
@@ -158,6 +185,7 @@ def verify_prepared_yolo_dataset(config: dict[str, Any], class_to_index: dict[st
             "Prepared YOLO dataset folder is missing. Run with --prepare-yolo-dataset first: "
             f"{dataset_dir}"
         )
+    assert_no_materialized_test_split(dataset_dir)
     missing_dirs: list[str] = []
     for split in ("train", "val"):
         for label in class_to_index:
@@ -276,7 +304,12 @@ def main() -> int:
     parser.add_argument("--dataset-root", required=True, help="Local dataset root; not written to versioned files.")
     parser.add_argument("--dry-run", action="store_true", help="Validate config, manifest, local files, and metadata only.")
     parser.add_argument("--prepare-yolo-dataset", action="store_true", help="Create local YOLO class-folder dataset with links.")
-    parser.add_argument("--smoke-test", action="store_true", help="Load a tiny subset from train/val/test.")
+    parser.add_argument("--smoke-test", action="store_true", help="Load a tiny subset from train and val only.")
+    parser.add_argument(
+        "--allow-final-test",
+        action="store_true",
+        help="Allow test links only with --prepare-yolo-dataset; never valid during training or smoke tests.",
+    )
     parser.add_argument("--max-smoke-samples", type=int, default=2)
     parser.add_argument(
         "--allow-training",
@@ -304,6 +337,10 @@ def main() -> int:
         parser.error("--imgsz-override must be at least 1")
     if args.allow_training and args.dry_run:
         parser.error("--dry-run and --allow-training are mutually exclusive")
+    if args.allow_final_test and not args.prepare_yolo_dataset:
+        parser.error("--allow-final-test is only valid with --prepare-yolo-dataset")
+    if args.allow_final_test and (args.allow_training or args.smoke_test):
+        parser.error("Final-test materialization cannot be combined with training or smoke tests")
 
     dry_run = args.dry_run or not args.allow_training
 
@@ -317,8 +354,9 @@ def main() -> int:
         extra_metadata={
             "classification_workflow": "Ultralytics YOLO cls",
             "local_yolo_dataset_note": (
-                "A YOLO-compatible train/val/test class-folder structure may be "
-                "created locally from the manifest with symlinks or hardlinks. "
+                "A YOLO-compatible train/val class-folder structure may be created "
+                "locally from the manifest with symlinks or hardlinks. Test requires "
+                "the separate --allow-final-test guard. "
                 "Do not commit prepared image folders. Copy fallback is disabled."
             ),
             "test_usage_note": (
@@ -338,7 +376,11 @@ def main() -> int:
     }
 
     if args.prepare_yolo_dataset:
-        summary = prepare_yolo_dataset(run, args.link_method)
+        summary = prepare_yolo_dataset(
+            run,
+            args.link_method,
+            include_final_test=bool(args.allow_final_test),
+        )
         result["prepared_yolo_dataset"] = summary["yolo_dataset_dir"]
         result["link_method_counts"] = summary["link_method_counts"]
 

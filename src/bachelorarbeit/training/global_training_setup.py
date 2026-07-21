@@ -28,6 +28,7 @@ from bachelorarbeit.data.split_dataset import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+DEVELOPMENT_SPLITS = ("train", "val")
 
 
 @dataclass(frozen=True)
@@ -238,10 +239,11 @@ def prepare_run(
     manifest_path = resolve_repo_path(str(config["split_manifest"]))
     records = read_split_manifest(manifest_path)
     class_to_index = build_class_mapping(records)
-    file_check = check_local_files(records, dataset_root)
+    development_records = [record for record in records if record.split in DEVELOPMENT_SPLITS]
+    file_check = check_local_files(development_records, dataset_root)
     if file_check.missing:
         raise FileNotFoundError(
-            "Dataset root does not contain all manifest files. "
+            "Dataset root does not contain all required train/val manifest files. "
             f"Missing {file_check.missing} of {file_check.checked}; "
             f"examples={list(file_check.missing_examples)}"
         )
@@ -250,7 +252,7 @@ def prepare_run(
     smoke_records: dict[str, list[dict[str, Any]]] = {}
     if smoke_test:
         transform = SimpleImageTransform(image_size=image_size, resize_mode="resize_pad", convert_rgb=True)
-        for split in ("train", "val", "test"):
+        for split in DEVELOPMENT_SPLITS:
             split_records = filter_split(records, split)[:max_smoke_samples]
             dataset = SplitImageDataset(
                 records=split_records,
@@ -296,7 +298,7 @@ def prepare_run(
         "package_versions": package_versions(extra_packages),
         "class_to_index": class_to_index,
         "split_distribution": split_distribution(records),
-        "local_file_check": {
+        "local_file_check_train_val_only": {
             "checked": file_check.checked,
             "existing": file_check.existing,
             "missing": file_check.missing,

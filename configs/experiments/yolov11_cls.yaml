@@ -38,6 +38,8 @@ smoke_test:
 yolo:
   workflow: "classification"
   local_dataset_structure: "prepare locally from split manifest with symlinks or hardlinks"
+  materialize_splits_by_default: ["train", "val"]
+  materialize_test_only_with_flag: "--allow-final-test"
   temp_dataset_dir: "outputs/global_classification/yolov11_cls/yolo_dataset"
   link_method: "auto"  # Try symlink first, then hardlink. Copying is disabled.
   copy_images: false
