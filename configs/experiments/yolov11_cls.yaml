@@ -1,4 +1,4 @@
-experiment_name: "yolov11_cls_bmw25_global"
+experiment_name: "yolov11_cls_n_imgsz320_seed42"
 model_family: "yolov11_cls"
 model_variant: "yolo11n-cls"
 optional_candidate_variant: "yolo11s-cls"  # Validate only after successful n-model run and only on validation.
@@ -9,20 +9,35 @@ batch_size: 16
 epochs: 75
 patience: 15
 seed: 42
-optimizer: "auto"  # Ultralytics default unless explicitly overridden.
-learning_rate: 0.001  # TODO: Confirm for the chosen Ultralytics setup.
+# Recorded configuration of the completed run; not used to retrain the model.
+optimizer: "auto"
+learning_rate: 0.01  # Stored by Ultralytics as lr0 in the completed run args.yaml.
 weight_decay: 0.0005
 pretrained: true
 amp: true
 device: 0
 workers: 4
 
+recorded_ultralytics_arguments:
+  lr0: 0.01
+  lrf: 0.01
+  momentum: 0.937
+  optimizer_note: "Recorded with optimizer=auto; optimizer selection remained Ultralytics-controlled."
+
 augmentation:
-  horizontal_flip: "to_validate"
-  vertical_flip: "to_validate"
-  rotate_90: "to_validate"
-  brightness_contrast: "light"
-  random_crop_or_resize: "light"
+  # Recorded by Ultralytics for the completed run; values were framework-controlled.
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  degrees: 0.0
+  translate: 0.1
+  scale: 0.5
+  shear: 0.0
+  perspective: 0.0
+  vertical_flip_probability: 0.0
+  horizontal_flip_probability: 0.5
+  auto_augment: "randaugment"
+  erasing: 0.4
   val_test: "deterministic_preprocessing_only"
 
 checkpoint_metric: "macro_f1"  # Used by the separate project evaluation workflow.
@@ -44,7 +59,7 @@ yolo:
   link_method: "auto"  # Try symlink first, then hardlink. Copying is disabled.
   copy_images: false
   project: "runs/global_classification"
-  name: "yolov11_cls_bmw25_global"
+  name: "yolov11_cls_n_imgsz320_seed42"
   train_splits: ["train", "val"]
   held_out_test_split: "test"
 

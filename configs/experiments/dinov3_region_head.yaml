@@ -4,7 +4,8 @@ model_id: "facebook/dinov3-vitb16-pretrain-lvd1689m"
 feature_representation: "pooler_output_or_cls_token"
 
 inputs:
-  region_annotations: "outputs/region_analysis/cvat_region_analysis/region_annotations.csv"
+  # Canonical full export. Completed training used an equivalent 223-row train/val snapshot.
+  region_annotations: "outputs/cvat_region_analysis/manual_all/region_annotations.csv"
   checkpoint: "outputs/global_classification/dinov3_partial_finetune_last2_bmw25_seed42/checkpoints/best_model.pt"
   # Local-only path. Set BMW25_MANUAL_ALL_ROOT or pass --manual-root for smoke-test/training.
   manual_root_env: "BMW25_MANUAL_ALL_ROOT"

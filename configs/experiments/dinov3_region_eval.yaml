@@ -4,8 +4,9 @@ model_id: "facebook/dinov3-vitb16-pretrain-lvd1689m"
 feature_representation: "pooler_output_or_cls_token"
 
 inputs:
-  region_annotations: "outputs/region_analysis/cvat_region_analysis/region_annotations.csv"
-  region_summary: "outputs/region_analysis/cvat_region_analysis/summary.json"
+  # Canonical full export. Completed validation used an equivalent 223-row train/val snapshot.
+  region_annotations: "outputs/cvat_region_analysis/manual_all/region_annotations.csv"
+  region_summary: "outputs/cvat_region_analysis/manual_all/region_annotations_summary.json"
   checkpoint: "outputs/global_classification/dinov3_partial_finetune_last2_bmw25_seed42/checkpoints/best_model.pt"
   # Local-only path. Set BMW25_MANUAL_ALL_ROOT or pass --manual-root for --allow-evaluate.
   manual_root_env: "BMW25_MANUAL_ALL_ROOT"
