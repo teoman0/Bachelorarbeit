@@ -134,7 +134,7 @@ Das Skript kopiert keine Bilder und schreibt nur relative Pfade in das
 Manifest:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/create_grouped_split.py --data-root "<dataset-root>" --output-manifest data/splits/bmw25_grouped_split_manifest.csv --summary-json data/splits/bmw25_grouped_split_summary.json --summary-md docs/dataset_split_summary.md --ratios 0.70,0.15,0.15 --seed 42
+.\.venv\Scripts\python.exe scripts/create_grouped_split.py --data-root "<dataset-root>" --output-manifest data/splits/bmw25_grouped_split_manifest.csv --summary-json data/splits/bmw25_grouped_split_summary.json --summary-md outputs/dataset_split_summary.md --ratios 0.70,0.15,0.15 --seed 42
 ```
 
 Vor einer Veröffentlichung des originalen Manifests ist dessen Freigabe

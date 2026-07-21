@@ -638,7 +638,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--summary-md",
-        default="docs/dataset_split_summary.md",
+        default="outputs/dataset_split_summary.md",
         help="Output Markdown summary path.",
     )
     parser.add_argument(
