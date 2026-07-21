@@ -21,7 +21,7 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageOps
+from PIL import Image
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -32,8 +32,8 @@ from bachelorarbeit.data.split_dataset import (  # noqa: E402
     build_class_mapping,
     check_local_files,
     filter_split,
+    prepare_dinov3_image,
     read_split_manifest,
-    resize_with_padding,
     resolve_record_path,
     split_distribution,
 )
@@ -75,8 +75,7 @@ class ManifestImageDataset:
         record = self.records[index]
         path = resolve_record_path(self.dataset_root, record)
         with Image.open(path) as image:
-            image = ImageOps.exif_transpose(image).convert("RGB")
-            image = resize_with_padding(image, self.image_size)
+            image = prepare_dinov3_image(image, self.image_size)
         return image, self.class_to_index[record.label], record
 
 

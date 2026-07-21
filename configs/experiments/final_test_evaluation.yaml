@@ -1,0 +1,81 @@
+experiment_name: "final_test_evaluation_bmw25"
+seed: 42
+split_manifest: "data/splits/bmw25_grouped_split_manifest.csv"
+split: "test"
+output_root: "outputs/final_test_evaluation_reproducible"
+
+safety:
+  required_flag: "--allow-final-test"
+  model_selection_complete: true
+  training_allowed: false
+  create_new_splits: false
+  test_usage: "one_time_final_evaluation_only"
+
+runtime:
+  device: 0
+  batch_size: 16
+
+preprocessing:
+  dino_global:
+    strategy: "resize_with_padding_then_image_processor"
+    image_size: [224, 224]
+    legacy_final_test_strategy: "direct_image_processor_resize"
+  deit:
+    strategy: "resize_with_padding_imagenet_normalization"
+    image_size: [224, 224]
+  regions:
+    strategy: "checkpoint_crop_mode_then_image_processor"
+
+global_models:
+  yolo11n_cls:
+    enabled: true
+    model_name: "YOLOv11n-cls"
+    config_id: "yolov11_cls_n_imgsz320_seed42"
+    checkpoint: "runs/global_classification/yolov11_cls_n_imgsz320_seed42/weights/best.pt"
+    image_size: 320
+  dinov3_frozen_linear_head:
+    enabled: true
+    model_name: "DINOv3 frozen linear head"
+    config_id: "dinov3_linear_head_bmw25_seed42"
+    model_id: "facebook/dinov3-vitb16-pretrain-lvd1689m"
+    checkpoint: "outputs/global_classification/dinov3_linear_head_bmw25_seed42/checkpoints/best_head.pt"
+  deit_tiny_scratch:
+    enabled: true
+    model_name: "DeiT-Tiny scratch"
+    config_id: "deit_tiny_scratch_bmw25_seed42"
+    checkpoint: "outputs/global_classification/deit_tiny_scratch_bmw25_seed42/checkpoints/best_model.pt"
+  dinov3_partial_finetune_last2:
+    enabled: true
+    model_name: "DINOv3 partial fine-tune last2"
+    config_id: "dinov3_partial_finetune_last2_bmw25_seed42"
+    model_id: "facebook/dinov3-vitb16-pretrain-lvd1689m"
+    checkpoint: "outputs/global_classification/dinov3_partial_finetune_last2_bmw25_seed42/checkpoints/best_model.pt"
+
+region_data:
+  annotation_table: "outputs/cvat_region_analysis/manual_all/region_annotations.csv"
+  images_subdirectory: "images"
+
+region_models:
+  dinov3_region_head_4class:
+    enabled: true
+    model_name: "DINOv3 region head 4-class"
+    config_id: "dinov3_region_head_bmw25_seed42"
+    checkpoint: "outputs/region_analysis/dinov3_region_head_bmw25_seed42/checkpoints/best_model.pt"
+    include_nicht_bewertbar: false
+  dinov3_region_head_5class:
+    enabled: true
+    model_name: "DINOv3 region head 5-class"
+    config_id: "dinov3_region_head_5class_bmw25_seed42"
+    checkpoint: "outputs/region_analysis/dinov3_region_head_5class_bmw25_seed42/checkpoints/best_model.pt"
+    include_nicht_bewertbar: true
+
+artifact_policy:
+  output_scope: "local_only"
+  write_below_outputs_only: true
+  commit_config: true
+  commit_script: true
+  commit_predictions: false
+  commit_metrics: false
+  commit_images: false
+  commit_checkpoints: false
+  commit_weights: false

@@ -232,3 +232,13 @@ def resize_with_padding(image: Image.Image, image_size: tuple[int, int]) -> Imag
     )
     canvas.paste(resized, offset)
     return canvas
+
+
+def prepare_dinov3_image(
+    image: Image.Image,
+    image_size: tuple[int, int] = (224, 224),
+) -> Image.Image:
+    """Apply the canonical global DINOv3 image preparation used for training."""
+
+    image = ImageOps.exif_transpose(image).convert("RGB")
+    return resize_with_padding(image, image_size)
